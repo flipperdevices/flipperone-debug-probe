@@ -1,0 +1,24 @@
+project("freertos")
+
+add_library(${PROJECT_NAME} INTERFACE)
+
+set(INCLUDES
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/include
+)
+
+target_sources(${PROJECT_NAME} INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/freertos_glue.c
+)
+
+target_compile_options(${PROJECT_NAME} INTERFACE
+    $<$<COMPILE_LANGUAGE:CXX>:-Wno-volatile>
+)
+
+target_include_directories(${PROJECT_NAME} INTERFACE ${INCLUDES})
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/FreeRTOS-Kernel/portable/ThirdParty/GCC/RP2350_ARM_NTZ)
+
+target_link_libraries(${PROJECT_NAME} INTERFACE
+    FreeRTOS-Kernel
+)
