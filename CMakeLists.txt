@@ -26,7 +26,7 @@ if (EXISTS ${picoVscode})
 endif()
 # ====================================================================================
 # TODO: custom board with RP2350_B_
-set(PICO_BOARD pimoroni_pga2350 CACHE STRING "Board type")
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 set(TINYUSB_OPT_OS OPT_OS_FREERTOS CACHE STRING "TinyUSB OS option")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
@@ -59,6 +59,7 @@ file(GLOB_RECURSE SOURCES
     "app/theme/*.c"
     "app/fs/*.c"
     "targets/${TARGET_HARDWARE}/furi_hal/*.c*"
+    "targets/${TARGET_HARDWARE}/furi_bsp/*.c*"
     "lib/tusb/*.c*"
     "applications/*.c"
     "applications/services/*.c"
@@ -102,6 +103,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/lib/tusb
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/src
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/furi_hal
+    ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/furi_bsp
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/config
     ${CMAKE_CURRENT_LIST_DIR}/lib
     ${CMAKE_CURRENT_LIST_DIR}/lib/freertos

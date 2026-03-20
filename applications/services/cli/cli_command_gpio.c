@@ -22,14 +22,6 @@ static bool cli_command_gpio_parse_value(FuriString* args, uint8_t* value) {
 
 static const CliGpioPinNamePair gpios[] = {
     {
-        .name = "cpu_d3",
-        .pin = &gpio_cpu_d3,
-    },
-    {
-        .name = "cpu_d2",
-        .pin = &gpio_cpu_d2,
-    },
-    {
         .name = "mcu_m40",
         .pin = &gpio_mcu_m40,
     },
@@ -38,13 +30,22 @@ static const CliGpioPinNamePair gpios[] = {
         .pin = &gpio_mcu_m41,
     },
     {
-        .name = "cpu_reset",
-        .pin = &gpio_cpu_reset,
+        .name = "cpu_d2",
+        .pin = &gpio_cpu_d2,
+    },
+    {
+        .name = "cpu_d3",
+        .pin = &gpio_cpu_d3,
     },
     {
         .name = "mcu_reset",
         .pin = &gpio_mcu_reset,
     },
+    {
+        .name = "cpu_reset",
+        .pin = &gpio_cpu_reset,
+    },
+
 };
 
 static void gpio_print_pins(void) {

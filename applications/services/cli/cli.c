@@ -87,7 +87,7 @@ void cli_motd(void) {
         "| _| | |__  | | |  _/|  _/| _| |   /  | (__ | |__  | |\r\n"
         "|_|  |____||___||_|  |_|  |___||_|_\\   \\___||____||___|\r\n"
         "\r\n"
-        "Welcome to Flipper One Command Line Interface!\r\n"
+        "Welcome to Flipper One Debug Probe Command Line Interface!\r\n"
         "Read the manual: https://docs.flipper.net/development/cli\r\n"
         "Run `help` or `?` to list available commands\r\n"
         "\r\n");
@@ -426,7 +426,7 @@ static void cli_session_close(Cli* cli) {
 int32_t cli_srv(void* p) {
     UNUSED(p);
     UNUSED(cli_session_close);
-
+    furi_delay_ms(1000); // Wait for system to be ready for logs
     FURI_LOG_I(TAG, "Started");
 
     Cli* cli = cli_alloc();

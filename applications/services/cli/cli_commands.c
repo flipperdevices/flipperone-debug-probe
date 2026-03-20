@@ -4,6 +4,7 @@
 #include <task_control_block.h>
 #include <time.h>
 #include <args.h>
+#include <furi_bsp.h>
 #include <furi_hal_clock.h>
 #include "cli_command_gpio.h"
 
@@ -209,6 +210,6 @@ void cli_commands_init(Cli* cli) {
     cli_add_command(cli, "top", CliCommandFlagParallelSafe, cli_command_top, NULL);
     cli_add_command(cli, "free", CliCommandFlagParallelSafe, cli_command_free, NULL);
     cli_add_command(cli, "free_blocks", CliCommandFlagParallelSafe, cli_command_free_blocks, NULL);
-    
+
     cli_add_command(cli, "gpio", CliCommandFlagParallelSafe, cli_command_gpio, NULL);
 }
