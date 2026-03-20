@@ -59,7 +59,6 @@ file(GLOB_RECURSE SOURCES
     "app/theme/*.c"
     "app/fs/*.c"
     "targets/${TARGET_HARDWARE}/furi_hal/*.c*"
-    "lib/drivers/i2c_slave/*.c*"
     "lib/tusb/*.c*"
     "applications/*.c"
     "applications/services/*.c"
@@ -110,7 +109,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/mlib)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/drivers/i2c_master_pio)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/freertos)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pico-kvstore)
 
@@ -128,7 +126,6 @@ target_link_libraries(${PROJECT_NAME}
     hardware_clocks
     pico_unique_id
     tinyusb_device
-    pio_i2c
     freertos
     mlib
     kvstore
