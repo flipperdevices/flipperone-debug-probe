@@ -146,7 +146,7 @@ static UartEchoApp*
     furi_thread_start(app->worker_thread);
 
     // Enable uart listener
-    app->serial_handle = furi_hal_serial_control_acquire(FuriHalSerialIdUart1);
+    app->serial_handle = furi_hal_serial_control_acquire(FuriHalSerialIdUart0);
     furi_check(app->serial_handle);
     furi_hal_serial_init(app->serial_handle, baudrate);
     furi_hal_serial_set_config(app->serial_handle, data_bits, parity, stop_bits);

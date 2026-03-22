@@ -7,6 +7,7 @@ extern int32_t test_peref_srv(void* p);
 extern int32_t uart_echo_app(void* p);
 extern int32_t usb_srv(void* p);
 extern int32_t cli_srv(void* p);
+extern int32_t uart1_to_cdc_app(void* p);
 // applications
 
 // CLI commands
@@ -38,6 +39,13 @@ const FlipperInternalApplication FLIPPER_SERVICES[] = {
         .name = "CliSrv",
         .appid = "cli_srv",
         .stack_size = 1024 * 2,
+        .flags = FlipperInternalApplicationFlagDefault,
+    },
+    {
+        .app = uart1_to_cdc_app,
+        .name = "Uart1ToCdc",
+        .appid = "uart1_to_cdc",
+        .stack_size = 2048,
         .flags = FlipperInternalApplicationFlagDefault,
     },
 };

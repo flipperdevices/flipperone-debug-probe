@@ -456,6 +456,16 @@ bool furi_hal_serial_tx_wait_complete(FuriHalSerialHandle* handle, uint32_t time
     return true;
 }
 
+void furi_hal_serial_tx_non_blocking(FuriHalSerialHandle* handle, uint8_t data) {
+    furi_check(handle);
+    uart_get_hw(uart1)->dr = data;
+}
+
+bool furi_hal_serial_tx_ready(FuriHalSerialHandle* handle) {
+    furi_check(handle);
+    return uart_is_writable(furi_hal_serial_resources[handle->id].periph);
+}
+
 bool furi_hal_serial_rx_available(FuriHalSerialHandle* handle) {
     furi_check(handle);
     return uart_is_readable(furi_hal_serial_resources[handle->id].periph);

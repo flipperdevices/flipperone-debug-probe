@@ -119,8 +119,6 @@ target_link_libraries(${PROJECT_NAME}
     cmsis_core
     pico_stdlib
     hardware_pwm
-    hardware_spi
-    hardware_i2c
     hardware_adc
     hardware_dma
     hardware_uart
@@ -133,5 +131,9 @@ target_link_libraries(${PROJECT_NAME}
     kvstore
     kvstore_default
 )
+
+# executing code from RAM
+#pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
+#pico_set_binary_type(${PROJECT_NAME} no_flash)
 
 pico_add_extra_outputs(${PROJECT_NAME})
