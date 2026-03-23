@@ -113,6 +113,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/mlib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/freertos)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pico-kvstore)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/debug_probe)
 
 # Add the standard library to the build
 target_link_libraries(${PROJECT_NAME}
@@ -130,6 +131,7 @@ target_link_libraries(${PROJECT_NAME}
     mlib
     kvstore
     kvstore_default
+    debug_probe
 )
 
 # executing code from RAM
