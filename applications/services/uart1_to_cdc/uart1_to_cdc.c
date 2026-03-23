@@ -219,12 +219,12 @@ static void uart1_to_cdc_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxE
     Uart1ToCdcApp* instance = context;
     WorkerEventFlags flag = 0;
 
-    uint8_t data[UART1_TO_CDC_IF_NUM];
+    uint8_t data[CFG_TUD_CDC_RX_BUFSIZE];
     size_t length = 0;
     size_t buf_size_rx = 0;
     furi_hal_gpio_write(&gpio_cpu_d3, true);
     if(event & (FuriHalSerialRxEventData | FuriHalSerialRxEventIdle)) {
-        length = furi_hal_serial_rx_data_non_blocking(handle, data, UART1_TO_CDC_IF_NUM);
+        length = furi_hal_serial_rx_data_non_blocking(handle, data, CFG_TUD_CDC_RX_BUFSIZE);
         if(instance->connected) {
             buf_size_rx = furi_stream_buffer_send(instance->tx_stream, &data, length, 0);
             if(buf_size_rx != length) {
