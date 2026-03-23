@@ -2,6 +2,8 @@
  * The MIT License (MIT)
  *
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
+ * Copyright (c) 2021 Peter Lawrence
+ * Copyright (c) 2022 Raspberry Pi Ltd
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,270 +26,173 @@
  */
 
 #include "tusb.h"
-#include "pico/unique_id.h"
-
-/* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
- * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
- *
- * Auto ProductID layout's Bitmap:
- *   [MSB]         HID | MSC | CDC          [LSB]
- */
-#define _PID_MAP(itf, n) ((CFG_TUD_##itf) << (n))
-
-// Todo: replace with your own VID
-#define USB_VID 0x37c1
-#define USB_PID 0xD101
-#define USB_BCD 0x0100
+#include "get_serial.h"
+#include "probe_config.h"
 
 //--------------------------------------------------------------------+
 // Device Descriptors
 //--------------------------------------------------------------------+
-tusb_desc_device_t const desc_device = {
-    .bLength = sizeof(tusb_desc_device_t),
-    .bDescriptorType = TUSB_DESC_DEVICE,
-    .bcdUSB = USB_BCD,
+tusb_desc_device_t const desc_device =
+{
+    .bLength            = sizeof(tusb_desc_device_t),
+    .bDescriptorType    = TUSB_DESC_DEVICE,
+#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
+    .bcdUSB             = 0x0210, // USB Specification version 2.1 for BOS
+#else
+    .bcdUSB             = 0x0110,
+#endif
+    .bDeviceClass       = 0x00, // Each interface specifies its own
+    .bDeviceSubClass    = 0x00, // Each interface specifies its own
+    .bDeviceProtocol    = 0x00,
+    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-    // Use Interface Association Descriptor (IAD) for CDC
-    // As required by USB Specs IAD's subclass must be common class (2) and protocol must be IAD (1)
-    .bDeviceClass = TUSB_CLASS_MISC,
-    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol = MISC_PROTOCOL_IAD,
-    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-
-    .idVendor = USB_VID,
-    .idProduct = USB_PID,
-    .bcdDevice = 0x0100,
-
-    .iManufacturer = 0x01,
-    .iProduct = 0x02,
-    .iSerialNumber = 0x03,
-
-    .bNumConfigurations = 0x01};
+    .idVendor           = 0x2E8A, // Pi
+    .idProduct          = 0x000c, // CMSIS-DAP Debug Probe
+    .bcdDevice          = 0x0230, // Version 02.30
+    .iManufacturer      = 0x01,
+    .iProduct           = 0x02,
+    .iSerialNumber      = 0x03,
+    .bNumConfigurations = 0x01
+};
 
 // Invoked when received GET DEVICE DESCRIPTOR
 // Application return pointer to descriptor
-uint8_t const* tud_descriptor_device_cb(void) {
-    return (uint8_t const*)&desc_device;
+uint8_t const * tud_descriptor_device_cb(void)
+{
+  return (uint8_t const *) &desc_device;
 }
 
 //--------------------------------------------------------------------+
 // Configuration Descriptor
 //--------------------------------------------------------------------+
-enum {
-    ITF_NUM_PROBE, // Old versions of Keil MDK only look at interface 0
-    ITF_NUM_CDC_0 = 0,
-    ITF_NUM_CDC_0_DATA,
-    ITF_NUM_CDC_1,
-    ITF_NUM_CDC_1_DATA,
-    ITF_NUM_TOTAL
+
+enum
+{
+  ITF_NUM_PROBE, // Old versions of Keil MDK only look at interface 0
+  ITF_NUM_CDC_COM,
+  ITF_NUM_CDC_DATA,
+#if (CDC_UARTS == 2)
+  ITF_NUM_CDC_EX_COM,
+  ITF_NUM_CDC_EX_DATA,
+#endif
+  ITF_NUM_TOTAL
 };
 
-//#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + TUD_VENDOR_DESC_LEN)
-
-static uint8_t const desc_hid_report[] = {TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE)};
-
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
-    (void)itf;
-    return desc_hid_report;
-}
-
-// #if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
-// // LPC 17xx and 40xx endpoint type (bulk/interrupt/iso) are fixed by its number
-// // 0 control, 1 In, 2 Bulk, 3 Iso, 4 In etc ...
-// #define EPNUM_CDC_0_NOTIF 0x81
-// #define EPNUM_CDC_0_OUT   0x02
-// #define EPNUM_CDC_0_IN    0x82
-
-// #define EPNUM_CDC_1_NOTIF 0x84
-// #define EPNUM_CDC_1_OUT   0x05
-// #define EPNUM_CDC_1_IN    0x85
-
-// #elif CFG_TUSB_MCU == OPT_MCU_CXD56
-// // CXD56 USB driver has fixed endpoint type (bulk/interrupt/iso) and direction (IN/OUT) by its number
-// // 0 control (IN/OUT), 1 Bulk (IN), 2 Bulk (OUT), 3 In (IN), 4 Bulk (IN), 5 Bulk (OUT), 6 In (IN)
-// #define EPNUM_CDC_0_NOTIF 0x83
-// #define EPNUM_CDC_0_OUT   0x02
-// #define EPNUM_CDC_0_IN    0x81
-
-// #define EPNUM_CDC_1_NOTIF 0x86
-// #define EPNUM_CDC_1_OUT   0x05
-// #define EPNUM_CDC_1_IN    0x84
-
-// #elif defined(TUD_ENDPOINT_ONE_DIRECTION_ONLY)
-// // MCUs that don't support a same endpoint number with different direction IN and OUT defined in tusb_mcu.h
-// //    e.g EP1 OUT & EP1 IN cannot exist together
-// #define EPNUM_CDC_0_NOTIF 0x81
-// #define EPNUM_CDC_0_OUT   0x02
-// #define EPNUM_CDC_0_IN    0x83
-
-// #define EPNUM_CDC_1_NOTIF 0x84
-// #define EPNUM_CDC_1_OUT   0x05
-// #define EPNUM_CDC_1_IN    0x86
-
-// #else
-#define EPNUM_CDC_0_NOTIF 0x81
-#define EPNUM_CDC_0_OUT   0x02
-#define EPNUM_CDC_0_IN    0x82
-
-#define EPNUM_CDC_1_NOTIF 0x83
-#define EPNUM_CDC_1_OUT   0x04
-#define EPNUM_CDC_1_IN    0x84
-
+#define CDC_NOTIFICATION_EP_NUM 0x81
+#define CDC_DATA_OUT_EP_NUM 0x02
+#define CDC_DATA_IN_EP_NUM 0x83
 #define DAP_OUT_EP_NUM 0x04
 #define DAP_IN_EP_NUM 0x85
 
-//#endif
-
-uint8_t const desc_fs_configuration[] = {
-    // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
-#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
-    TUD_VENDOR_DESCRIPTOR(ITF_NUM_PROBE, 5, DAP_OUT_EP_NUM, DAP_IN_EP_NUM, 64),
+#if (CDC_UARTS == 2)
+#define CDC_EX_NOTIFICATION_EP_NUM 0x86
+#define CDC_EX_DATA_OUT_EP_NUM 0x07
+#define CDC_EX_DATA_IN_EP_NUM 0x88
 #endif
 
-    // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
+#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V1)
+//#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CDC_UARTS + TUD_HID_INOUT_DESC_LEN)
+#else
+//#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_VENDOR_DESC_LEN)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CDC_UARTS + TUD_VENDOR_DESC_LEN)
+#endif
 
-    // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+static uint8_t const desc_hid_report[] =
+{
+  TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE)
 };
 
-#if TUD_OPT_HIGH_SPEED
-// Per USB specs: high speed capable device must report device_qualifier and other_speed_configuration
+uint8_t const * tud_hid_descriptor_report_cb(uint8_t itf)
+{
+  (void) itf;
+  return desc_hid_report;
+}
 
-uint8_t const desc_hs_configuration[] = {
-    // Config number, interface count, string index, total length, attribute, power in mA
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
-
-    // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 512),
-
-    // 2nd CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 4, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 512),
+uint8_t desc_configuration[] =
+{
+  TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0, 100),
+  // Interface 0
+#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V1)
+  // HID (named interface)
+  TUD_HID_INOUT_DESCRIPTOR(ITF_NUM_PROBE, 4, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), DAP_OUT_EP_NUM, DAP_IN_EP_NUM, CFG_TUD_HID_EP_BUFSIZE, 1),
+#elif (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
+  // Bulk (named interface)
+  TUD_VENDOR_DESCRIPTOR(ITF_NUM_PROBE, 5, DAP_OUT_EP_NUM, DAP_IN_EP_NUM, 64),
+#elif (PROBE_DEBUG_PROTOCOL == PROTO_OPENOCD_CUSTOM)
+  // Bulk
+  TUD_VENDOR_DESCRIPTOR(ITF_NUM_PROBE, 0, DAP_OUT_EP_NUM, DAP_IN_EP_NUM, 64),
+#endif
+  // Interface 1 + 2
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_COM, 6, CDC_NOTIFICATION_EP_NUM, 64, CDC_DATA_OUT_EP_NUM, CDC_DATA_IN_EP_NUM, 64),
+  #if (CDC_UARTS == 2)
+  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_EX_COM, 6, CDC_EX_NOTIFICATION_EP_NUM, 64, CDC_EX_DATA_OUT_EP_NUM, CDC_EX_DATA_IN_EP_NUM, 64),
+#endif
 };
-
-// device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
-tusb_desc_device_qualifier_t const desc_device_qualifier = {
-    .bLength = sizeof(tusb_desc_device_t),
-    .bDescriptorType = TUSB_DESC_DEVICE,
-    .bcdUSB = USB_BCD,
-
-    .bDeviceClass = TUSB_CLASS_MISC,
-    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol = MISC_PROTOCOL_IAD,
-
-    .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
-    .bNumConfigurations = 0x01,
-    .bReserved = 0x00};
-
-// Invoked when received GET DEVICE QUALIFIER DESCRIPTOR request
-// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete.
-// device_qualifier descriptor describes information about a high-speed capable device that would
-// change if the device were operating at the other speed. If not highspeed capable stall this request.
-uint8_t const* tud_descriptor_device_qualifier_cb(void) {
-    return (uint8_t const*)&desc_device_qualifier;
-}
-
-// Invoked when received GET OTHER SEED CONFIGURATION DESCRIPTOR request
-// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-// Configuration descriptor in the other speed e.g if high speed then this is for full speed and vice versa
-uint8_t const* tud_descriptor_other_speed_configuration_cb(uint8_t index) {
-    (void)index; // for multiple configurations
-
-    // if link speed is high return fullspeed config, and vice versa
-    return (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_fs_configuration : desc_hs_configuration;
-}
-
-#endif // highspeed
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
 // Application return pointer to descriptor
 // Descriptor contents must exist long enough for transfer to complete
-uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
-    (void)index; // for multiple configurations
-
-#if TUD_OPT_HIGH_SPEED
-    // Although we are highspeed, host may be fullspeed.
-    return (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_hs_configuration : desc_fs_configuration;
-#else
-    //* Hack in CAP_BREAK support */
-    //desc_fs_configuration[CONFIG_TOTAL_LEN - TUD_CDC_DESC_LEN + 8 + 9 + 5 + 5 + 4 - 1] = 0x6;
-    return desc_fs_configuration;
-#endif
+uint8_t const * tud_descriptor_configuration_cb(uint8_t index)
+{
+  (void) index; // for multiple configurations
+  /* Hack in CAP_BREAK support */
+  desc_configuration[CONFIG_TOTAL_LEN - TUD_CDC_DESC_LEN + 8 + 9 + 5 + 5 + 4 - 1] = 0x6;
+  return desc_configuration;
 }
 
 //--------------------------------------------------------------------+
 // String Descriptors
 //--------------------------------------------------------------------+
 
-// String Descriptor Index
-enum {
-    STRID_LANGID = 0,
-    STRID_MANUFACTURER,
-    STRID_PRODUCT,
-    STRID_SERIAL,
-};
-
-#define PRODUCT_NAME "Flipper One Debug Probe"
-static char usbd_product_str[] = PRODUCT_NAME " 00112233445566778899";
-static char* usbd_product_sn_pointer = usbd_product_str + sizeof(PRODUCT_NAME);
-
 // array of pointer to string descriptors
-static char const* usbd_desc_str[] = {
-    (const char[]){0x09, 0x04}, // 0: is supported language is English (0x0409)
-    "Flipper FZCO", // 1: Manufacturer
-    usbd_product_str, // 2: Product
-    "flip_one_probe", // 3: Serials will use unique ID if possible
-    "CDC", // 4: CDC Interface
+char const* string_desc_arr [] =
+{
+  (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
+  "Raspberry Pi", // 1: Manufacturer
+  PROBE_PRODUCT_STRING, // 2: Product
+  usb_serial,     // 3: Serial, uses flash unique ID
+  "CMSIS-DAP v1 Interface", // 4: Interface descriptor for HID transport
+  "CMSIS-DAP v2 Interface", // 5: Interface descriptor for Bulk transport
+  "CDC-ACM UART Interface", // 6: Interface descriptor for CDC
 };
 
-// Get USB Serial number string from unique ID if available. Return number of character.
-// Input is string descriptor from index 1 (index 0 is type + len)
-static inline size_t _board_usb_get_serial(uint16_t desc_str1[], size_t max_chars) {
-    char usbd_serial_str[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
+static uint16_t _desc_str[32];
 
-    size_t len = max_chars < (2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES) ? max_chars : (2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES);
+// Invoked when received GET STRING DESCRIPTOR request
+// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
+uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid)
+{
+  (void) langid;
 
-    pico_get_unique_board_id_string(usbd_serial_str, sizeof(usbd_serial_str));
+  uint8_t chr_count;
 
-    memcpy(desc_str1, usbd_serial_str, len);
-    return 2 * len;
-}
+  if ( index == 0)
+  {
+    memcpy(&_desc_str[1], string_desc_arr[0], 2);
+    chr_count = 1;
+  }else
+  {
+    // Convert ASCII string into UTF-16
 
-const uint16_t* tud_descriptor_string_cb(uint8_t index, __unused uint16_t langid) {
-#ifndef USBD_DESC_STR_MAX
-#define USBD_DESC_STR_MAX (64)
-#elif USBD_DESC_STR_MAX > 127
-#error USBD_DESC_STR_MAX too high (max is 127).
-#elif USBD_DESC_STR_MAX < 17
-#error USBD_DESC_STR_MAX too low (min is 17).
-#endif
-    static uint16_t desc_str[USBD_DESC_STR_MAX];
+    if ( !(index < sizeof(string_desc_arr)/sizeof(string_desc_arr[0])) ) return NULL;
 
-    // Assign the SN using the unique flash id
-    if(usbd_product_str[sizeof(PRODUCT_NAME)] == '0') {
-        pico_get_unique_board_id_string(usbd_product_sn_pointer, sizeof(usbd_product_str) - sizeof(PRODUCT_NAME) - 1);
+    const char* str = string_desc_arr[index];
+
+    // Cap at max char
+    chr_count = strlen(str);
+    if ( chr_count > 31 ) chr_count = 31;
+
+    for(uint8_t i=0; i<chr_count; i++)
+    {
+      _desc_str[1+i] = str[i];
     }
+  }
 
-    uint8_t len;
-    if(index == 0) {
-        memcpy(&desc_str[1], usbd_desc_str[0], 2);
-        len = 1;
-    } else {
-        if(index >= sizeof(usbd_desc_str) / sizeof(usbd_desc_str[0])) {
-            return NULL;
-        }
-        const char* str = usbd_desc_str[index];
-        for(len = 0; len < USBD_DESC_STR_MAX - 1 && str[len]; ++len) {
-            desc_str[1 + len] = str[len];
-        }
-    }
+  // first byte is length (including header), second byte is string type
+  _desc_str[0] = (TUSB_DESC_STRING << 8 ) | (2*chr_count + 2);
 
-    // first byte is length (including header), second byte is string type
-    desc_str[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * len + 2));
-
-    return desc_str;
+  return _desc_str;
 }
 
 /* [incoherent gibbering to make Windows happy] */

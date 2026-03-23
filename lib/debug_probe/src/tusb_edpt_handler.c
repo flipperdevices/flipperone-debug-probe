@@ -6,7 +6,18 @@
 
 #include "tusb_edpt_handler.h"
 #include "DAP.h"
-#include "semphr.h"
+//#include "semphr.h"
+
+#include <furi.h>
+#define TAG "Dap"
+
+#define DAP_DEBUG_ENABLE
+
+#ifdef DAP_DEBUG_ENABLE
+#define DAP_DEBUG(...) FURI_LOG_D(TAG, __VA_ARGS__)
+#else
+#define DAP_DEBUG(...)
+#endif
 
 
 static uint8_t itf_num;
@@ -19,7 +30,10 @@ static uint8_t _in_ep_addr;
 static buffer_t USBRequestBuffer;
 static buffer_t USBResponseBuffer;
 
-static SemaphoreHandle_t edpt_spoon;
+//static SemaphoreHandle_t edpt_spoon;
+static FuriSemaphore* spoon;
+FuriThreadId thread_id;
+#define INPUT_THREAD_FLAG_ISR     0x00000001
 
 #define WR_IDX(x) (x.wptr % DAP_PACKET_COUNT)
 #define RD_IDX(x) (x.rptr % DAP_PACKET_COUNT)
@@ -38,20 +52,27 @@ bool buffer_empty(buffer_t *buffer)
 }
 
 void dap_edpt_init(void) {
-	edpt_spoon = xSemaphoreCreateMutex();
-	xSemaphoreGive(edpt_spoon);
+	// edpt_spoon = xSemaphoreCreateMutex();
+	// xSemaphoreGive(edpt_spoon);
+	DAP_DEBUG("dap_edpt_init");
+	thread_id = furi_thread_get_current_id();
+	spoon = furi_semaphore_alloc(1, 0);
+	furi_semaphore_release(spoon);
 }
 
 bool dap_edpt_deinit(void)
 {
+	DAP_DEBUG("dap_edpt_deinit");
 	memset(&USBRequestBuffer, 0, sizeof(USBRequestBuffer));
 	memset(&USBResponseBuffer, 0, sizeof(USBResponseBuffer));
-	vSemaphoreDelete(edpt_spoon);
+	//vSemaphoreDelete(edpt_spoon);
+	furi_semaphore_free(spoon);
 	return true;
 }
 
 void dap_edpt_reset(uint8_t __unused rhport)
 {
+	DAP_DEBUG("dap_edpt_reset");
 	itf_num = 0;
 }
 
@@ -90,6 +111,7 @@ char * dap_cmd_string[] = {
 uint16_t dap_edpt_open(uint8_t __unused rhport, tusb_desc_interface_t const *itf_desc, uint16_t max_len)
 {
 
+	DAP_DEBUG("dap_edpt_open");
 	TU_VERIFY(TUSB_CLASS_VENDOR_SPECIFIC == itf_desc->bInterfaceClass &&
 			DAP_INTERFACE_SUBCLASS == itf_desc->bInterfaceSubClass &&
 			DAP_INTERFACE_PROTOCOL == itf_desc->bInterfaceProtocol, 0);
@@ -151,7 +173,8 @@ bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t re
 	{
 		if(xferred_bytes >= 0u && xferred_bytes <= DAP_PACKET_SIZE)
 		{
-			xSemaphoreTake(edpt_spoon, portMAX_DELAY);
+			//xSemaphoreTake(edpt_spoon, portMAX_DELAY);
+			furi_semaphore_acquire(spoon, FuriWaitForever);
 			USBResponseBuffer.rptr++;
 			// This checks that the buffer was not empty in DAP thread, which means the next buffer was not queued up for the in endpoint callback
 			// So, queue up the buffer at the new read index, since we expect read to catch up to write at this point.
@@ -162,9 +185,11 @@ bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t re
 				usbd_edpt_xfer(rhport, ep_addr, RD_SLOT_PTR(USBResponseBuffer), USBResponseBuffer.data_len[RD_IDX(USBResponseBuffer)]);
 				USBResponseBuffer.wasEmpty = (USBResponseBuffer.rptr + 1) == USBResponseBuffer.wptr;
 			}
-			xSemaphoreGive(edpt_spoon);
+			//xSemaphoreGive(edpt_spoon);
+			furi_semaphore_release(spoon);
 			//  Wake up DAP thread after processing the callback
-			xTaskNotify(dap_taskhandle, 0, eSetValueWithOverwrite);
+			//xTaskNotify(dap_taskhandle, 0, eSetValueWithOverwrite);
+			furi_thread_flags_set(thread_id, INPUT_THREAD_FLAG_ISR);
 			return true;
 		}
 		return false;
@@ -173,7 +198,8 @@ bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t re
 
 		if(xferred_bytes >= 0u && xferred_bytes <= DAP_PACKET_SIZE)
 		{
-			xSemaphoreTake(edpt_spoon, portMAX_DELAY);
+			//xSemaphoreTake(edpt_spoon, portMAX_DELAY);
+			furi_semaphore_acquire(spoon, FuriWaitForever);
 			// Only queue the next buffer in the out callback if the buffer is not full
 			// If full, we set the wasFull flag, which will be checked by dap thread
 			if(!buffer_full(&USBRequestBuffer))
@@ -185,9 +211,11 @@ bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t re
 			else {
 				USBRequestBuffer.wasFull = true;
 			}
-			xSemaphoreGive(edpt_spoon);
+			//xSemaphoreGive(edpt_spoon);
+			furi_semaphore_release(spoon);
 			//  Wake up DAP thread after processing the callback
-			xTaskNotify(dap_taskhandle, 0, eSetValueWithOverwrite);
+			//xTaskNotify(dap_taskhandle, 0, eSetValueWithOverwrite);
+			furi_thread_flags_set(thread_id, INPUT_THREAD_FLAG_ISR);
 			return true;
 		}
 		return false;
@@ -200,10 +228,14 @@ void dap_thread(void *ptr)
 	uint32_t n;
 	uint32_t cmd;
 	uint16_t resp_len;
+	DAP_DEBUG("DAP thread start");
 	do
 	{
 		// Wait for usb CB wake
-		xTaskNotifyWait(0, 0xFFFFFFFFu, &cmd, 1);
+		//xTaskNotifyWait(0, 0xFFFFFFFFu, &cmd, 1);
+		cmd = furi_thread_flags_wait(INPUT_THREAD_FLAG_ISR, FuriFlagWaitAny, FuriWaitForever);
+
+		DAP_DEBUG("DAP thread wake %08lX",cmd);
 
 		while(USBRequestBuffer.rptr != USBRequestBuffer.wptr)
 		{
@@ -216,12 +248,16 @@ void dap_thread(void *ptr)
 				probe_info("%lu %lu DAP queued cmd %s len %02x\n",
 					       USBRequestBuffer.wptr, USBRequestBuffer.rptr,
 					       dap_cmd_string[USBRequestBuffer.data[n % DAP_PACKET_COUNT][0]], USBRequestBuffer.data[n % DAP_PACKET_COUNT][1]);
+
+				
 				USBRequestBuffer.data[n % DAP_PACKET_COUNT][0] = ID_DAP_ExecuteCommands;
 				n++;
 				while (n == USBRequestBuffer.wptr) {
 					/* Need yield in a loop here, as IN callbacks will also wake the thread */
 					probe_info("DAP wait\n");
-					vTaskSuspend(dap_taskhandle);
+					DAP_DEBUG("DAP wait\n");
+					//vTaskSuspend(dap_taskhandle);
+					furi_thread_yield();
 				}
 			}
 			// Read a single packet from the USB buffer into the DAP Request buffer
@@ -230,24 +266,27 @@ void dap_thread(void *ptr)
 					   dap_cmd_string[RD_SLOT_PTR(USBRequestBuffer)[0], RD_SLOT_PTR(USBRequestBuffer)[1]]);
 
 			// If the buffer was full in the out callback, we need to queue up another buffer for the endpoint to consume, now that we know there is space in the buffer.
-			xSemaphoreTake(edpt_spoon, portMAX_DELAY); // Suspend the scheduler to safely update the write index
+			//xSemaphoreTake(edpt_spoon, portMAX_DELAY); // Suspend the scheduler to safely update the write index
+			furi_semaphore_acquire(spoon, FuriWaitForever);
 			if(USBRequestBuffer.wasFull)
 			{
 				USBRequestBuffer.wptr++;
 				usbd_edpt_xfer(_rhport, _out_ep_addr, WR_SLOT_PTR(USBRequestBuffer), DAP_PACKET_SIZE);
 				USBRequestBuffer.wasFull = false;
 			}
-			xSemaphoreGive(edpt_spoon);
+			//xSemaphoreGive(edpt_spoon);
+			furi_semaphore_release(spoon);
 
 			resp_len = DAP_ExecuteCommand(RD_SLOT_PTR(USBRequestBuffer), WR_SLOT_PTR(USBResponseBuffer)) & 0xffff;
 			USBRequestBuffer.rptr++;
 			probe_info("%lu %lu DAP resp %s len %u\n",
 					   USBResponseBuffer.wptr, USBResponseBuffer.rptr,
-					   dap_cmd_string[WR_SLOT_PTR(USBResponseBuffer)[0], resp_len);
+					   dap_cmd_string[WR_SLOT_PTR(USBResponseBuffer)[0]], resp_len);
 
 			USBResponseBuffer.data_len[WR_IDX(USBResponseBuffer)] = resp_len;
 			//  Suspend the scheduler to avoid stale values/race conditions between threads
-			xSemaphoreTake(edpt_spoon, portMAX_DELAY);
+			//xSemaphoreTake(edpt_spoon, portMAX_DELAY);
+			furi_semaphore_acquire(spoon, FuriWaitForever);
 
 			if(buffer_empty(&USBResponseBuffer))
 			{
@@ -261,9 +300,11 @@ void dap_thread(void *ptr)
 				// The In callback needs to check this flag to know when to queue up the next buffer.
 				USBResponseBuffer.wasEmpty = false;
 			}
-			xSemaphoreGive(edpt_spoon);
+			//xSemaphoreGive(edpt_spoon);
+			furi_semaphore_release(spoon);
 		}
 	} while (1);
+	DAP_DEBUG("DAP thread exit");
 }
 
 usbd_class_driver_t const _dap_edpt_driver =

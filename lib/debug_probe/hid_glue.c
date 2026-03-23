@@ -5,7 +5,7 @@
 
 static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
-TaskHandle_t dap_taskhandle;
+ TaskHandle_t dap_taskhandle;
 
 // int debug_probe_main(void) {
 //     DAP_Setup();

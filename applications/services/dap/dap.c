@@ -7,8 +7,8 @@ int32_t dap_srv(void* p) {
     UNUSED(p);
 
     FURI_LOG_I(TAG, "Starting DAP service");
-    // hid_glue_init();
-    // hid_glue_dap_start_thread();
+    hid_glue_init();
+    hid_glue_dap_start_thread();
 
     // We should never reach this point
     while (1)
