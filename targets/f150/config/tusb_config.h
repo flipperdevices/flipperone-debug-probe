@@ -95,9 +95,9 @@
 //------------- CLASS -------------//
 #define CFG_TUD_CDC               2
 #define CFG_TUD_MSC               0
-#define CFG_TUD_HID               0
+#define CFG_TUD_HID               1
 #define CFG_TUD_MIDI              0
-#define CFG_TUD_VENDOR            0
+#define CFG_TUD_VENDOR            1
 
 #define CFG_TUSB_DEBUG_PRINTF usb_srv_log
 #define TU_ASSERT_1(_cond)       furi_assert(_cond)
@@ -110,6 +110,9 @@
 
 // CDC Endpoint transfer buffer size, more is faster
 #define CFG_TUD_CDC_EP_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+
+#define CFG_TUD_VENDOR_RX_BUFSIZE 8192
+#define CFG_TUD_VENDOR_TX_BUFSIZE 8192
 
 #ifdef __cplusplus
  }

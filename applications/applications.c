@@ -8,6 +8,7 @@ extern int32_t uart_echo_app(void* p);
 extern int32_t usb_srv(void* p);
 extern int32_t cli_srv(void* p);
 extern int32_t uart1_to_cdc_app(void* p);
+extern int32_t dap_srv(void* p);
 // applications
 
 // CLI commands
@@ -45,6 +46,13 @@ const FlipperInternalApplication FLIPPER_SERVICES[] = {
         .app = uart1_to_cdc_app,
         .name = "Uart1ToCdc",
         .appid = "uart1_to_cdc",
+        .stack_size = 2048,
+        .flags = FlipperInternalApplicationFlagDefault,
+    },
+    {
+        .app = dap_srv,
+        .name = "DapSrv",
+        .appid = "dap_srv",
         .stack_size = 2048,
         .flags = FlipperInternalApplicationFlagDefault,
     },

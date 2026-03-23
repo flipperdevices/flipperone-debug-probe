@@ -74,6 +74,7 @@ uint8_t const* tud_descriptor_device_cb(void) {
 // Configuration Descriptor
 //--------------------------------------------------------------------+
 enum {
+    ITF_NUM_PROBE, // Old versions of Keil MDK only look at interface 0
     ITF_NUM_CDC_0 = 0,
     ITF_NUM_CDC_0_DATA,
     ITF_NUM_CDC_1,
@@ -81,42 +82,50 @@ enum {
     ITF_NUM_TOTAL
 };
 
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
+//#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN)
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_CDC * TUD_CDC_DESC_LEN + TUD_VENDOR_DESC_LEN)
 
-#if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
-// LPC 17xx and 40xx endpoint type (bulk/interrupt/iso) are fixed by its number
-// 0 control, 1 In, 2 Bulk, 3 Iso, 4 In etc ...
-#define EPNUM_CDC_0_NOTIF 0x81
-#define EPNUM_CDC_0_OUT   0x02
-#define EPNUM_CDC_0_IN    0x82
+static uint8_t const desc_hid_report[] = {TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE)};
 
-#define EPNUM_CDC_1_NOTIF 0x84
-#define EPNUM_CDC_1_OUT   0x05
-#define EPNUM_CDC_1_IN    0x85
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t itf) {
+    (void)itf;
+    return desc_hid_report;
+}
 
-#elif CFG_TUSB_MCU == OPT_MCU_CXD56
-// CXD56 USB driver has fixed endpoint type (bulk/interrupt/iso) and direction (IN/OUT) by its number
-// 0 control (IN/OUT), 1 Bulk (IN), 2 Bulk (OUT), 3 In (IN), 4 Bulk (IN), 5 Bulk (OUT), 6 In (IN)
-#define EPNUM_CDC_0_NOTIF 0x83
-#define EPNUM_CDC_0_OUT   0x02
-#define EPNUM_CDC_0_IN    0x81
+// #if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
+// // LPC 17xx and 40xx endpoint type (bulk/interrupt/iso) are fixed by its number
+// // 0 control, 1 In, 2 Bulk, 3 Iso, 4 In etc ...
+// #define EPNUM_CDC_0_NOTIF 0x81
+// #define EPNUM_CDC_0_OUT   0x02
+// #define EPNUM_CDC_0_IN    0x82
 
-#define EPNUM_CDC_1_NOTIF 0x86
-#define EPNUM_CDC_1_OUT   0x05
-#define EPNUM_CDC_1_IN    0x84
+// #define EPNUM_CDC_1_NOTIF 0x84
+// #define EPNUM_CDC_1_OUT   0x05
+// #define EPNUM_CDC_1_IN    0x85
 
-#elif defined(TUD_ENDPOINT_ONE_DIRECTION_ONLY)
-// MCUs that don't support a same endpoint number with different direction IN and OUT defined in tusb_mcu.h
-//    e.g EP1 OUT & EP1 IN cannot exist together
-#define EPNUM_CDC_0_NOTIF 0x81
-#define EPNUM_CDC_0_OUT   0x02
-#define EPNUM_CDC_0_IN    0x83
+// #elif CFG_TUSB_MCU == OPT_MCU_CXD56
+// // CXD56 USB driver has fixed endpoint type (bulk/interrupt/iso) and direction (IN/OUT) by its number
+// // 0 control (IN/OUT), 1 Bulk (IN), 2 Bulk (OUT), 3 In (IN), 4 Bulk (IN), 5 Bulk (OUT), 6 In (IN)
+// #define EPNUM_CDC_0_NOTIF 0x83
+// #define EPNUM_CDC_0_OUT   0x02
+// #define EPNUM_CDC_0_IN    0x81
 
-#define EPNUM_CDC_1_NOTIF 0x84
-#define EPNUM_CDC_1_OUT   0x05
-#define EPNUM_CDC_1_IN    0x86
+// #define EPNUM_CDC_1_NOTIF 0x86
+// #define EPNUM_CDC_1_OUT   0x05
+// #define EPNUM_CDC_1_IN    0x84
 
-#else
+// #elif defined(TUD_ENDPOINT_ONE_DIRECTION_ONLY)
+// // MCUs that don't support a same endpoint number with different direction IN and OUT defined in tusb_mcu.h
+// //    e.g EP1 OUT & EP1 IN cannot exist together
+// #define EPNUM_CDC_0_NOTIF 0x81
+// #define EPNUM_CDC_0_OUT   0x02
+// #define EPNUM_CDC_0_IN    0x83
+
+// #define EPNUM_CDC_1_NOTIF 0x84
+// #define EPNUM_CDC_1_OUT   0x05
+// #define EPNUM_CDC_1_IN    0x86
+
+// #else
 #define EPNUM_CDC_0_NOTIF 0x81
 #define EPNUM_CDC_0_OUT   0x02
 #define EPNUM_CDC_0_IN    0x82
@@ -124,11 +133,18 @@ enum {
 #define EPNUM_CDC_1_NOTIF 0x83
 #define EPNUM_CDC_1_OUT   0x04
 #define EPNUM_CDC_1_IN    0x84
-#endif
+
+#define DAP_OUT_EP_NUM 0x04
+#define DAP_IN_EP_NUM 0x85
+
+//#endif
 
 uint8_t const desc_fs_configuration[] = {
     // Config number, interface count, string index, total length, attribute, power in mA
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+#if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
+    TUD_VENDOR_DESCRIPTOR(ITF_NUM_PROBE, 5, DAP_OUT_EP_NUM, DAP_IN_EP_NUM, 64),
+#endif
 
     // 1st CDC: Interface number, string index, EP notification address and size, EP data address (out, in) and size.
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
@@ -195,6 +211,8 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     // Although we are highspeed, host may be fullspeed.
     return (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_hs_configuration : desc_fs_configuration;
 #else
+    //* Hack in CAP_BREAK support */
+    //desc_fs_configuration[CONFIG_TOTAL_LEN - TUD_CDC_DESC_LEN + 8 + 9 + 5 + 5 + 4 - 1] = 0x6;
     return desc_fs_configuration;
 #endif
 }
@@ -270,4 +288,70 @@ const uint16_t* tud_descriptor_string_cb(uint8_t index, __unused uint16_t langid
     desc_str[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * len + 2));
 
     return desc_str;
+}
+
+/* [incoherent gibbering to make Windows happy] */
+
+//--------------------------------------------------------------------+
+// BOS Descriptor
+//--------------------------------------------------------------------+
+
+/* Microsoft OS 2.0 registry property descriptor
+Per MS requirements https://msdn.microsoft.com/en-us/library/windows/hardware/hh450799(v=vs.85).aspx
+device should create DeviceInterfaceGUIDs. It can be done by driver and
+in case of real PnP solution device should expose MS "Microsoft OS 2.0
+registry property descriptor". Such descriptor can insert any record
+into Windows registry per device/configuration/interface. In our case it
+will insert "DeviceInterfaceGUIDs" multistring property.
+
+
+https://developers.google.com/web/fundamentals/native-hardware/build-for-webusb/
+(Section Microsoft OS compatibility descriptors)
+*/
+#define MS_OS_20_DESC_LEN  0xB2
+
+#define BOS_TOTAL_LEN      (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
+
+uint8_t const desc_bos[] =
+{
+  // total length, number of device caps
+  TUD_BOS_DESCRIPTOR(BOS_TOTAL_LEN, 1),
+
+  // Microsoft OS 2.0 descriptor
+  TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, 1)
+};
+
+uint8_t const desc_ms_os_20[] =
+{
+  // Set header: length, type, windows version, total length
+  U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+
+  // Configuration subset header: length, type, configuration index, reserved, configuration total length
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A),
+
+  // Function Subset header: length, type, first interface, reserved, subset length
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_PROBE, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08),
+
+  // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
+  U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
+
+  // MS OS 2.0 Registry property descriptor: length, type
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+  U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A), // wPropertyDataType, wPropertyNameLength and PropertyName "DeviceInterfaceGUIDs\0" in UTF-16
+  'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
+  'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+  U16_TO_U8S_LE(0x0050), // wPropertyDataLength
+  // bPropertyData "{CDB3B5AD-293B-4663-AA36-1AAE46463776}" as a UTF-16 string (b doesn't mean bytes)
+  '{', 0x00, 'C', 0x00, 'D', 0x00, 'B', 0x00, '3', 0x00, 'B', 0x00, '5', 0x00, 'A', 0x00, 'D', 0x00, '-', 0x00,
+  '2', 0x00, '9', 0x00, '3', 0x00, 'B', 0x00, '-', 0x00, '4', 0x00, '6', 0x00, '6', 0x00, '3', 0x00, '-', 0x00,
+  'A', 0x00, 'A', 0x00, '3', 0x00, '6', 0x00, '-', 0x00, '1', 0x00, 'A', 0x00, 'A', 0x00, 'E', 0x00, '4', 0x00,
+  '6', 0x00, '4', 0x00, '6', 0x00, '3', 0x00, '7', 0x00, '7', 0x00, '6', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
+
+uint8_t const * tud_descriptor_bos_cb(void)
+{
+  return desc_bos;
 }

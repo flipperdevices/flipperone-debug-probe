@@ -1,7 +1,7 @@
 /*
  * The MIT License (MIT)
  *
- * Copyright (c) 2023 Raspberry Pi (Trading) Ltd.
+ * Copyright (c) 2021 Federico Zuccardi Merli
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,38 +23,29 @@
  *
  */
 
-#ifndef BOARD_PICO_H_
-#define BOARD_PICO_H_
+#include <stdint.h>
+#include "pico.h"
+#include "pico/unique_id.h"
+#include "get_serial.h"
 
-#define PROBE_IO_RAW
-// #define PROBE_CDC_UART
+/* C string for iSerialNumber in USB Device Descriptor, two chars per byte + terminating NUL */
+char usb_serial[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
 
-#define CDC_UARTS 2
+/* Why a uint8_t[8] array inside a struct instead of an uint64_t an inquiring mind might wonder */
+static pico_unique_board_id_t uID;
 
-// PIO config
-#define PROBE_SM 0
-#define PROBE_PIN_OFFSET 2
-#define PROBE_PIN_SWCLK (PROBE_PIN_OFFSET + 0) // 2
-#define PROBE_PIN_SWDIO (PROBE_PIN_OFFSET + 1) // 3
-// Target reset config
-#define PROBE_PIN_RESET 1
+void usb_serial_init(void)
+{
+    pico_get_unique_board_id(&uID);
 
-// // UART config
-// #define PROBE_UART_TX 4
-// #define PROBE_UART_RX 5
-// #define PROBE_UART_INTERFACE uart1
-// #define PROBE_UART_BAUDRATE 115200
-
-// #if CDC_UARTS == 2
-// // if enabled, always ttyACM(n+1)
-// #define PROBE_EXTRA_UART_TX 0
-// #define PROBE_EXTRA_UART_RX 1
-// #define PROBE_EXTRA_UART_INTERFACE uart0
-// #define PROBE_EXTRA_UART_BAUDRATE 115200
-// #endif
-
-// #define PROBE_USB_CONNECTED_LED 25
-
-#define PROBE_PRODUCT_STRING "Debugprobe on Pico (CMSIS-DAP)"
-
-#endif
+    for (int i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2; i++)
+    {
+        /* Byte index inside the uid array */
+        int bi = i / 2;
+        /* Use high nibble first to keep memory order (just cosmetics) */
+        uint8_t nibble = (uID.id[bi] >> 4) & 0x0F;
+        uID.id[bi] <<= 4;
+        /* Binary to hex digit */
+        usb_serial[i] = nibble < 10 ? nibble + '0' : nibble + 'A' - 10;
+    }
+}
