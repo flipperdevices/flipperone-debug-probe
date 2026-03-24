@@ -36,6 +36,8 @@ extern const GpioPin gpio_cpu_d2;
 extern const GpioPin gpio_mcu_m40;
 extern const GpioPin gpio_mcu_m41;
 
+extern const GpioPin gpio_led;
+
 void furi_hal_resources_init_early(void);
 
 void furi_hal_resources_deinit_early(void);

@@ -9,6 +9,7 @@ extern int32_t usb_srv(void* p);
 extern int32_t cli_srv(void* p);
 extern int32_t uart1_to_cdc_app(void* p);
 extern int32_t dap_srv(void* p);
+extern int32_t notification_srv(void* p);
 // applications
 
 // CLI commands
@@ -54,6 +55,13 @@ const FlipperInternalApplication FLIPPER_SERVICES[] = {
         .name = "DapSrv",
         .appid = "dap_srv",
         .stack_size = 2048,
+        .flags = FlipperInternalApplicationFlagDefault,
+    },
+    {
+        .app = notification_srv,
+        .name = "NotificationSrv",
+        .appid = "notification_srv",
+        .stack_size = 1024,
         .flags = FlipperInternalApplicationFlagDefault,
     },
 };
