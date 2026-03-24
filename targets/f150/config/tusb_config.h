@@ -66,7 +66,7 @@
 
 //------------- CLASS -------------//
 #define CFG_TUD_HID             1
-#define CFG_TUD_CDC             2
+#define CFG_TUD_CDC             3
 #define CFG_TUD_MSC             0
 #define CFG_TUD_MIDI            0
 #define CFG_TUD_VENDOR          1
