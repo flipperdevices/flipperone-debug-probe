@@ -5,6 +5,7 @@
 
 #include <hardware/gpio.h>
 #include <furi_hal_nvm.h>
+#include <uart_pio.h>
 
 #define TAG "PerefTest"
 
@@ -74,9 +75,10 @@ int32_t test_peref_srv(void* p) {
     UNUSED(duty);
 
     //test_nvm();
+
     while(true) {
         furi_delay_ms(5000);
-        FURI_LOG_I(TAG, "Test PerefSrv running...");
+        //FURI_LOG_I(TAG, "Test PerefSrv running...");
     }
     furi_crash();
     return 0;

@@ -111,6 +111,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/lib/mlib
 )
 
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/mlib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/freertos)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pico-kvstore)
@@ -127,6 +128,7 @@ target_link_libraries(${PROJECT_NAME}
     hardware_watchdog
     hardware_clocks
     pico_unique_id
+    uart_pio
     tinyusb_device
     freertos
     mlib

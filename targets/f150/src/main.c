@@ -15,7 +15,7 @@ int32_t init_task(void* context) {
     furi_hal_init();
 
     // Set the UART for logging output
-    furi_hal_serial_control_set_logging_config(FuriHalSerialIdUart0, 230400);
+    furi_hal_serial_control_set_logging_config(FuriHalSerialIdUartPio, 230400);
     // ToDo: set debug mode
     furi_log_set_level(FuriLogLevelInfo);
 
