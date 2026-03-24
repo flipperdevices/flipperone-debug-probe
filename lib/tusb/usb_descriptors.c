@@ -220,179 +220,37 @@ uint8_t const desc_bos[] = {
     // Microsoft OS 2.0 descriptor
     TUD_BOS_MS_OS_20_DESCRIPTOR(MS_OS_20_DESC_LEN, 1)};
 
-uint8_t const desc_ms_os_20[] = {
-    // Set header: length, type, windows version, total length
-    U16_TO_U8S_LE(0x000A),
-    U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR),
-    U32_TO_U8S_LE(0x06030000),
-    U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
+uint8_t const desc_ms_os_20[] =
+{
+  // Set header: length, type, windows version, total length
+  U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(MS_OS_20_DESC_LEN),
 
-    // Configuration subset header: length, type, configuration index, reserved, configuration total length
-    U16_TO_U8S_LE(0x0008),
-    U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION),
-    0,
-    0,
-    U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A),
+  // Configuration subset header: length, type, configuration index, reserved, configuration total length
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A),
 
-    // Function Subset header: length, type, first interface, reserved, subset length
-    U16_TO_U8S_LE(0x0008),
-    U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION),
-    ITF_NUM_PROBE,
-    0,
-    U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08),
+  // Function Subset header: length, type, first interface, reserved, subset length
+  U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), ITF_NUM_PROBE, 0, U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08),
 
-    // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
-    U16_TO_U8S_LE(0x0014),
-    U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID),
-    'W',
-    'I',
-    'N',
-    'U',
-    'S',
-    'B',
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00, // sub-compatible
+  // MS OS 2.0 Compatible ID descriptor: length, type, compatible ID, sub compatible ID
+  U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID), 'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // sub-compatible
 
-    // MS OS 2.0 Registry property descriptor: length, type
-    U16_TO_U8S_LE(MS_OS_20_DESC_LEN - 0x0A - 0x08 - 0x08 - 0x14),
-    U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
-    U16_TO_U8S_LE(0x0007),
-    U16_TO_U8S_LE(0x002A), // wPropertyDataType, wPropertyNameLength and PropertyName "DeviceInterfaceGUIDs\0" in UTF-16
-    'D',
-    0x00,
-    'e',
-    0x00,
-    'v',
-    0x00,
-    'i',
-    0x00,
-    'c',
-    0x00,
-    'e',
-    0x00,
-    'I',
-    0x00,
-    'n',
-    0x00,
-    't',
-    0x00,
-    'e',
-    0x00,
-    'r',
-    0x00,
-    'f',
-    0x00,
-    'a',
-    0x00,
-    'c',
-    0x00,
-    'e',
-    0x00,
-    'G',
-    0x00,
-    'U',
-    0x00,
-    'I',
-    0x00,
-    'D',
-    0x00,
-    's',
-    0x00,
-    0x00,
-    0x00,
-    U16_TO_U8S_LE(0x0050), // wPropertyDataLength
-    // bPropertyData "{CDB3B5AD-293B-4663-AA36-1AAE46463776}" as a UTF-16 string (b doesn't mean bytes)
-    '{',
-    0x00,
-    'C',
-    0x00,
-    'D',
-    0x00,
-    'B',
-    0x00,
-    '3',
-    0x00,
-    'B',
-    0x00,
-    '5',
-    0x00,
-    'A',
-    0x00,
-    'D',
-    0x00,
-    '-',
-    0x00,
-    '2',
-    0x00,
-    '9',
-    0x00,
-    '3',
-    0x00,
-    'B',
-    0x00,
-    '-',
-    0x00,
-    '4',
-    0x00,
-    '6',
-    0x00,
-    '6',
-    0x00,
-    '3',
-    0x00,
-    '-',
-    0x00,
-    'A',
-    0x00,
-    'A',
-    0x00,
-    '3',
-    0x00,
-    '6',
-    0x00,
-    '-',
-    0x00,
-    '1',
-    0x00,
-    'A',
-    0x00,
-    'A',
-    0x00,
-    'E',
-    0x00,
-    '4',
-    0x00,
-    '6',
-    0x00,
-    '4',
-    0x00,
-    '6',
-    0x00,
-    '3',
-    0x00,
-    '7',
-    0x00,
-    '7',
-    0x00,
-    '6',
-    0x00,
-    '}',
-    0x00,
-    0x00,
-    0x00,
-    0x00,
-    0x00};
+  // MS OS 2.0 Registry property descriptor: length, type
+  U16_TO_U8S_LE(MS_OS_20_DESC_LEN-0x0A-0x08-0x08-0x14), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+  U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A), // wPropertyDataType, wPropertyNameLength and PropertyName "DeviceInterfaceGUIDs\0" in UTF-16
+  'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
+  'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
+  U16_TO_U8S_LE(0x0050), // wPropertyDataLength
+  // bPropertyData "{CDB3B5AD-293B-4663-AA36-1AAE46463776}" as a UTF-16 string (b doesn't mean bytes)
+  '{', 0x00, 'C', 0x00, 'D', 0x00, 'B', 0x00, '3', 0x00, 'B', 0x00, '5', 0x00, 'A', 0x00, 'D', 0x00, '-', 0x00,
+  '2', 0x00, '9', 0x00, '3', 0x00, 'B', 0x00, '-', 0x00, '4', 0x00, '6', 0x00, '6', 0x00, '3', 0x00, '-', 0x00,
+  'A', 0x00, 'A', 0x00, '3', 0x00, '6', 0x00, '-', 0x00, '1', 0x00, 'A', 0x00, 'A', 0x00, 'E', 0x00, '4', 0x00,
+  '6', 0x00, '4', 0x00, '6', 0x00, '3', 0x00, '7', 0x00, '7', 0x00, '6', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00
+};
 
 TU_VERIFY_STATIC(sizeof(desc_ms_os_20) == MS_OS_20_DESC_LEN, "Incorrect size");
 
-uint8_t const* tud_descriptor_bos_cb(void) {
-    return desc_bos;
+uint8_t const * tud_descriptor_bos_cb(void)
+{
+  return desc_bos;
 }
