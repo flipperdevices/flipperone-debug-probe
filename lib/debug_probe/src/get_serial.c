@@ -24,7 +24,6 @@
  */
 
 #include <stdint.h>
-#include "pico.h"
 #include "pico/unique_id.h"
 #include "get_serial.h"
 
@@ -34,12 +33,10 @@ char usb_serial[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
 /* Why a uint8_t[8] array inside a struct instead of an uint64_t an inquiring mind might wonder */
 static pico_unique_board_id_t uID;
 
-void usb_serial_init(void)
-{
+void usb_serial_init(void) {
     pico_get_unique_board_id(&uID);
 
-    for (int i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2; i++)
-    {
+    for(int i = 0; i < PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2; i++) {
         /* Byte index inside the uid array */
         int bi = i / 2;
         /* Use high nibble first to keep memory order (just cosmetics) */

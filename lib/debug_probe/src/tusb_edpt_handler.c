@@ -6,15 +6,9 @@
 
 #include "tusb_edpt_handler.h"
 #include "DAP.h"
-
+#include "probe_config.h"
 #include <furi.h>
 #define TAG "Dap"
-
-#ifdef DAP_DEBUG_ENABLE
-#define DAP_DEBUG(...) FURI_LOG_D(TAG, __VA_ARGS__)
-#else
-#define DAP_DEBUG(...)
-#endif
 
 static uint8_t itf_num;
 static uint8_t _rhport;
@@ -44,13 +38,13 @@ bool buffer_empty(buffer_t* buffer) {
 }
 
 void dap_edpt_init(void) {
-    DAP_DEBUG("dap_edpt_init");
+    PROBE_DEBUG("dap_edpt_init");
     edpt_spoon = furi_semaphore_alloc(1, 0);
     furi_semaphore_release(edpt_spoon);
 }
 
 bool dap_edpt_deinit(void) {
-    DAP_DEBUG("dap_edpt_deinit");
+    PROBE_DEBUG("dap_edpt_deinit");
     memset(&USBRequestBuffer, 0, sizeof(USBRequestBuffer));
     memset(&USBResponseBuffer, 0, sizeof(USBResponseBuffer));
     furi_semaphore_free(edpt_spoon);
@@ -58,7 +52,7 @@ bool dap_edpt_deinit(void) {
 }
 
 void dap_edpt_reset(uint8_t __unused rhport) {
-    DAP_DEBUG("dap_edpt_reset");
+    PROBE_DEBUG("dap_edpt_reset");
     itf_num = 0;
 }
 
@@ -94,7 +88,7 @@ char* dap_cmd_string[] = {
 };
 
 uint16_t dap_edpt_open(uint8_t __unused rhport, tusb_desc_interface_t const* itf_desc, uint16_t max_len) {
-    DAP_DEBUG("dap_edpt_open");
+    PROBE_DEBUG("dap_edpt_open");
     TU_VERIFY(
         TUSB_CLASS_VENDOR_SPECIFIC == itf_desc->bInterfaceClass && DAP_INTERFACE_SUBCLASS == itf_desc->bInterfaceSubClass &&
             DAP_INTERFACE_PROTOCOL == itf_desc->bInterfaceProtocol,
@@ -191,7 +185,7 @@ bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t re
 void dap_thread(void* ptr) {
     uint32_t n;
     uint16_t resp_len;
-    DAP_DEBUG("DAP thread start");
+    PROBE_DEBUG("DAP thread start");
     /* Ensure thread_id refers to this DAP thread (the one that waits on flags).
 	   dap_edpt_init() may be called earlier from USB init context, so record
 	   the real waiting thread id here to avoid signalling the wrong thread. */
@@ -207,7 +201,7 @@ void dap_thread(void* ptr) {
 			 */
             n = USBRequestBuffer.rptr;
             while(USBRequestBuffer.data[n % DAP_PACKET_COUNT][0] == ID_DAP_QueueCommands) {
-                DAP_DEBUG(
+                PROBE_DEBUG(
                     "%lu %lu DAP queued cmd %s len %02x",
                     USBRequestBuffer.wptr,
                     USBRequestBuffer.rptr,
@@ -218,12 +212,12 @@ void dap_thread(void* ptr) {
                 n++;
                 while(n == USBRequestBuffer.wptr) {
                     /* Need yield in a loop here, as IN callbacks will also wake the thread */
-                    DAP_DEBUG("DAP wait\n");
+                    PROBE_DEBUG("DAP wait\n");
                     furi_thread_yield();
                 }
             }
             // Read a single packet from the USB buffer into the DAP Request buffer
-            DAP_DEBUG(
+            PROBE_DEBUG(
                 "%lu %lu DAP cmd %s len %02x",
                 USBRequestBuffer.wptr,
                 USBRequestBuffer.rptr,
@@ -241,7 +235,7 @@ void dap_thread(void* ptr) {
 
             resp_len = DAP_ExecuteCommand(RD_SLOT_PTR(USBRequestBuffer), WR_SLOT_PTR(USBResponseBuffer)) & 0xffff;
             USBRequestBuffer.rptr++;
-            probe_info(
+            PROBE_DEBUG(
                 "%lu %lu DAP resp %s len %u\n", USBResponseBuffer.wptr, USBResponseBuffer.rptr, dap_cmd_string[WR_SLOT_PTR(USBResponseBuffer)[0]], resp_len);
 
             USBResponseBuffer.data_len[WR_IDX(USBResponseBuffer)] = resp_len;
@@ -261,7 +255,7 @@ void dap_thread(void* ptr) {
             furi_semaphore_release(edpt_spoon);
         }
     } while(1);
-    DAP_DEBUG("DAP thread exit");
+    PROBE_DEBUG("DAP thread exit");
 }
 
 usbd_class_driver_t const _dap_edpt_driver = {

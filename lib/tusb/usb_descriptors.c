@@ -25,9 +25,9 @@
  *
  */
 
-#include "tusb.h"
-#include "get_serial.h"
-#include "probe_config.h"
+#include <tusb.h>
+#include <get_serial.h>
+#include <probe_config.h>
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -71,7 +71,7 @@ enum
   ITF_NUM_PROBE, // Old versions of Keil MDK only look at interface 0
   ITF_NUM_CDC_COM,
   ITF_NUM_CDC_DATA,
-#if (CDC_UARTS == 2)
+#if (CFG_TUD_CDC == 2)
   ITF_NUM_CDC_EX_COM,
   ITF_NUM_CDC_EX_DATA,
 #endif
@@ -84,18 +84,16 @@ enum
 #define DAP_OUT_EP_NUM 0x04
 #define DAP_IN_EP_NUM 0x85
 
-#if (CDC_UARTS == 2)
+#if (CFG_TUD_CDC == 2)
 #define CDC_EX_NOTIFICATION_EP_NUM 0x86
 #define CDC_EX_DATA_OUT_EP_NUM 0x07
 #define CDC_EX_DATA_IN_EP_NUM 0x88
 #endif
 
 #if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V1)
-//#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_INOUT_DESC_LEN)
-#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CDC_UARTS + TUD_HID_INOUT_DESC_LEN)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CFG_TUD_CDC + TUD_HID_INOUT_DESC_LEN)
 #else
-//#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_VENDOR_DESC_LEN)
-#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CDC_UARTS + TUD_VENDOR_DESC_LEN)
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CFG_TUD_CDC + TUD_VENDOR_DESC_LEN)
 #endif
 
 static uint8_t const desc_hid_report[] =
@@ -125,7 +123,7 @@ uint8_t desc_configuration[] =
 #endif
   // Interface 1 + 2
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_COM, 6, CDC_NOTIFICATION_EP_NUM, 64, CDC_DATA_OUT_EP_NUM, CDC_DATA_IN_EP_NUM, 64),
-  #if (CDC_UARTS == 2)
+  #if (CFG_TUD_CDC == 2)
   TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_EX_COM, 6, CDC_EX_NOTIFICATION_EP_NUM, 64, CDC_EX_DATA_OUT_EP_NUM, CDC_EX_DATA_IN_EP_NUM, 64),
 #endif
 };
