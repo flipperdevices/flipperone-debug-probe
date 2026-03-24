@@ -411,7 +411,7 @@ bool furi_hal_serial_tx_wait_complete(FuriHalSerialHandle* handle, uint32_t time
 
 void furi_hal_serial_tx_non_blocking(FuriHalSerialHandle* handle, uint8_t data) {
     furi_check(handle);
-    uart_get_hw(uart1)->dr = data;
+    uart_get_hw(furi_hal_serial_resources[handle->id].periph)->dr = data;
 }
 
 bool furi_hal_serial_tx_ready(FuriHalSerialHandle* handle) {
