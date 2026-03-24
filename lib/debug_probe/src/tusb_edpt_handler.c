@@ -55,7 +55,6 @@ void dap_edpt_init(void) {
 	// edpt_spoon = xSemaphoreCreateMutex();
 	// xSemaphoreGive(edpt_spoon);
 	DAP_DEBUG("dap_edpt_init");
-	thread_id = furi_thread_get_current_id();
 	spoon = furi_semaphore_alloc(1, 0);
 	furi_semaphore_release(spoon);
 }
@@ -167,11 +166,14 @@ bool dap_edpt_control_xfer_cb(uint8_t __unused rhport, uint8_t stage, tusb_contr
 // Manage USBResponseBuffer (request) write and USBRequestBuffer (response) read indices
 bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes)
 {
+	
 	const uint8_t ep_dir = tu_edpt_dir(ep_addr);
+
+	//DAP_DEBUG("dap_edpt_xfer_cb ep_addr: %02X, ep_dir: %02X, result: %d, xferred_bytes: %lu", ep_addr, ep_dir, result, xferred_bytes);
 
 	if(ep_dir == TUSB_DIR_IN)
 	{
-		if(xferred_bytes >= 0u && xferred_bytes <= DAP_PACKET_SIZE)
+		if(xferred_bytes >= 0u && xferred_bytes <= DAP_PACKET_SIZE)\
 		{
 			//xSemaphoreTake(edpt_spoon, portMAX_DELAY);
 			furi_semaphore_acquire(spoon, FuriWaitForever);
@@ -215,6 +217,7 @@ bool dap_edpt_xfer_cb(uint8_t __unused rhport, uint8_t ep_addr, xfer_result_t re
 			furi_semaphore_release(spoon);
 			//  Wake up DAP thread after processing the callback
 			//xTaskNotify(dap_taskhandle, 0, eSetValueWithOverwrite);
+
 			furi_thread_flags_set(thread_id, INPUT_THREAD_FLAG_ISR);
 			return true;
 		}
@@ -229,13 +232,17 @@ void dap_thread(void *ptr)
 	uint32_t cmd;
 	uint16_t resp_len;
 	DAP_DEBUG("DAP thread start");
+	/* Ensure thread_id refers to this DAP thread (the one that waits on flags).
+	   dap_edpt_init() may be called earlier from USB init context, so record
+	   the real waiting thread id here to avoid signalling the wrong thread. */
+	thread_id = furi_thread_get_current_id();
 	do
 	{
 		// Wait for usb CB wake
 		//xTaskNotifyWait(0, 0xFFFFFFFFu, &cmd, 1);
 		cmd = furi_thread_flags_wait(INPUT_THREAD_FLAG_ISR, FuriFlagWaitAny, FuriWaitForever);
 
-		DAP_DEBUG("DAP thread wake %08lX",cmd);
+		DAP_DEBUG("DAP thread wake %08X", (unsigned)cmd);
 
 		while(USBRequestBuffer.rptr != USBRequestBuffer.wptr)
 		{

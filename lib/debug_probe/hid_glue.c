@@ -2,30 +2,14 @@
 #include "tusb.h"
 #include "DAP.h"
 #include "tusb_edpt_handler.h"
+#include "get_serial.h"
 
 static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
  TaskHandle_t dap_taskhandle;
 
-// int debug_probe_main(void) {
-//     DAP_Setup();
-
-//     while(1) {
-// #if (PROBE_DEBUG_PROTOCOL == PROTO_DAP_V2)
-//         if(tud_vendor_available()) {
-//             uint32_t resp_len;
-//             tud_vendor_read(RxDataBuffer, sizeof(RxDataBuffer));
-//             resp_len = DAP_ProcessCommand(RxDataBuffer, TxDataBuffer);
-//             tud_vendor_write(TxDataBuffer, resp_len);
-//         }
-// #endif
-//     }
-
-//     return 0;
-// }
-
-
 void hid_glue_init(void) {
+    usb_serial_init();
     DAP_Setup();
 }
 

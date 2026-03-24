@@ -91,6 +91,8 @@
 #define TUD_OPT_RP2040_USB_DEVICE_UFRAME_FIX 1
 #endif
 
+#define CFG_TUSB_DEBUG_PRINTF usb_srv_log
+
 #ifdef __cplusplus
  }
 #endif

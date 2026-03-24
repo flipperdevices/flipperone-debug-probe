@@ -28,6 +28,7 @@ endif()
 # TODO: custom board with RP2350_B_
 set(PICO_BOARD pico2 CACHE STRING "Board type")
 set(TINYUSB_OPT_OS OPT_OS_FREERTOS CACHE STRING "TinyUSB OS option")
+set(LOG 0 CACHE STRING "TinyUSB debug level (used by tinyusb family.cmake)")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include("lib/sdk/pico_sdk_import.cmake")
@@ -84,6 +85,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # TODO: When enabling multi-core, this needs to be disabled and the correct flash access mechanism implemented
     PICO_FLASH_ASSUME_CORE1_SAFE=1
     #PICO_USE_SW_SPIN_LOCKS=0
+    # LOG=2
+    # TINYUSB_DEBUG_LEVEL=2
 )
 
 
