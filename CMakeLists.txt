@@ -85,8 +85,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     # TODO: When enabling multi-core, this needs to be disabled and the correct flash access mechanism implemented
     PICO_FLASH_ASSUME_CORE1_SAFE=1
     #PICO_USE_SW_SPIN_LOCKS=0
-    # LOG=2
-    # TINYUSB_DEBUG_LEVEL=2
 )
 
 

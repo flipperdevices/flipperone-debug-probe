@@ -25,7 +25,7 @@ set(CMSIS_DAP_SOURCES
 )
 
 set(OTHER_SOURCES
-    ${CMAKE_CURRENT_LIST_DIR}/hid_glue.c
+    ${CMAKE_CURRENT_LIST_DIR}/debug_probe.c
 )
 
 target_sources(${PROJECT_NAME} INTERFACE

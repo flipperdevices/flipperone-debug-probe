@@ -1,4 +1,3 @@
-#include "test_peref.h"
 #include <furi.h>
 
 #include <furi_hal_resources.h>
@@ -6,8 +5,6 @@
 
 #include <hardware/gpio.h>
 #include <furi_hal_nvm.h>
-
-#include <debug_probe/hid_glue.h>
 
 #define TAG "PerefTest"
 
