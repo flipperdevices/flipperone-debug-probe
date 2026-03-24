@@ -138,7 +138,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # executing code from RAM
-#pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
+pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
 #pico_set_binary_type(${PROJECT_NAME} no_flash)
 
 pico_add_extra_outputs(${PROJECT_NAME})
