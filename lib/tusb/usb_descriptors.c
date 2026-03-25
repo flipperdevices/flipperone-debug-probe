@@ -31,7 +31,7 @@
 
 // Todo: replace with your own VID
 #define USB_VID 0x37c1
-#define USB_PID 0xD101
+#define USB_PID 0xF131
 #define USB_BCD 0x0100
 
 //--------------------------------------------------------------------+

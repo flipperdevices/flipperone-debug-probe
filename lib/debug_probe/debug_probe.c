@@ -2,14 +2,11 @@
 #include <tusb.h>
 #include <DAP.h>
 #include <tusb_edpt_handler.h>
-#include <get_serial.h>
 
 static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 
 void debug_probe_init(void) {
-    // You need to call serial number initialization before enabling usb_srv
-    usb_serial_init();
     DAP_Setup();
 }
 
