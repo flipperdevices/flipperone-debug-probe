@@ -1,9 +1,5 @@
 #include "furi_hal_flash.h"
 
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-
 #include <core/common_defines.h>
 #include <furi.h>
 #include <hardware/flash.h>

@@ -12,8 +12,6 @@
 
 #define VCP_IF_NUM 0
 
-// #define CLI_VCP_DEBUG
-
 #ifdef CLI_VCP_DEBUG
 #define VCP_DEBUG(...) FURI_LOG_D(TAG, __VA_ARGS__)
 #else

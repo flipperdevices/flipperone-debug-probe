@@ -7,7 +7,7 @@ pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/probe.pio
 set(INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_DAP/CMSIS/DAP/Firmware/Include/
     ${CMAKE_CURRENT_SOURCE_DIR}/CMSIS_DAP/CMSIS/Core/Include/
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/config
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 

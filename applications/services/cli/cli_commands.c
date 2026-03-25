@@ -4,7 +4,6 @@
 #include <task_control_block.h>
 #include <time.h>
 #include <args.h>
-#include <furi_bsp.h>
 #include <furi_hal_clock.h>
 #include "cli_command_gpio.h"
 
