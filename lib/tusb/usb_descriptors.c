@@ -26,8 +26,13 @@
  */
 
 #include <tusb.h>
-#include <get_serial.h>
+#include "pico/unique_id.h"
 #include <probe_config.h>
+
+// Todo: replace with your own VID
+#define USB_VID 0x37c1
+#define USB_PID 0xD101
+#define USB_BCD 0x0100
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -45,9 +50,9 @@ tusb_desc_device_t const desc_device = {
     .bDeviceProtocol = 0x00,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
 
-    .idVendor = 0x2E8A, // Pi
-    .idProduct = 0x000c, // CMSIS-DAP Debug Probe
-    .bcdDevice = 0x0230, // Version 02.30
+    .idVendor = USB_VID, // Flipper Devices Ltd
+    .idProduct = USB_PID, // CMSIS-DAP Debug Probe
+    .bcdDevice = USB_BCD, // Version 01.00
     .iManufacturer = 0x01,
     .iProduct = 0x02,
     .iSerialNumber = 0x03,
@@ -146,49 +151,54 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 // String Descriptors
 //--------------------------------------------------------------------+
 
+#define PRODUCT_NAME "Flipper One Debug Probe"
+static char usbd_product_str[] = PRODUCT_NAME " 00112233445566778899";
+static char* usbd_product_sn_pointer = usbd_product_str + sizeof(PRODUCT_NAME);
+
 // array of pointer to string descriptors
-char const* string_desc_arr[] = {
+char const* usbd_desc_str[] = {
     (const char[]){0x09, 0x04}, // 0: is supported language is English (0x0409)
-    "Raspberry Pi", // 1: Manufacturer
-    PROBE_PRODUCT_STRING, // 2: Product
-    usb_serial, // 3: Serial, uses flash unique ID
+    "Flipper FZCO", // 1: Manufacturer
+    usbd_product_str, // 2: Product
+    "flip_one_debug", // 3: Serials will use unique ID if possible
     "CMSIS-DAP v1 Interface", // 4: Interface descriptor for HID transport
     "CMSIS-DAP v2 Interface", // 5: Interface descriptor for Bulk transport
-    "CDC-ACM UART Interface", // 6: Interface descriptor for CDC
+    "CDC-ACM UART Interface", // 6: Interface descrip`tor for CDC
 };
 
-static uint16_t _desc_str[32];
+const uint16_t* tud_descriptor_string_cb(uint8_t index, __unused uint16_t langid) {
+#ifndef USBD_DESC_STR_MAX
+#define USBD_DESC_STR_MAX (64)
+#elif USBD_DESC_STR_MAX > 127
+#error USBD_DESC_STR_MAX too high (max is 127).
+#elif USBD_DESC_STR_MAX < 17
+#error USBD_DESC_STR_MAX too low (min is 17).
+#endif
+    static uint16_t desc_str[USBD_DESC_STR_MAX];
 
-// Invoked when received GET STRING DESCRIPTOR request
-// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
-uint16_t const* tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
-    (void)langid;
+    // Assign the SN using the unique flash id
+    if(usbd_product_str[sizeof(PRODUCT_NAME)] == '0') {
+        pico_get_unique_board_id_string(usbd_product_sn_pointer, sizeof(usbd_product_str) - sizeof(PRODUCT_NAME) - 1);
+    }
 
-    uint8_t chr_count;
-
+    uint8_t len;
     if(index == 0) {
-        memcpy(&_desc_str[1], string_desc_arr[0], 2);
-        chr_count = 1;
+        memcpy(&desc_str[1], usbd_desc_str[0], 2);
+        len = 1;
     } else {
-        // Convert ASCII string into UTF-16
-
-        if(!(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0]))) return NULL;
-
-        const char* str = string_desc_arr[index];
-
-        // Cap at max char
-        chr_count = strlen(str);
-        if(chr_count > 31) chr_count = 31;
-
-        for(uint8_t i = 0; i < chr_count; i++) {
-            _desc_str[1 + i] = str[i];
+        if(index >= sizeof(usbd_desc_str) / sizeof(usbd_desc_str[0])) {
+            return NULL;
+        }
+        const char* str = usbd_desc_str[index];
+        for(len = 0; len < USBD_DESC_STR_MAX - 1 && str[len]; ++len) {
+            desc_str[1 + len] = str[len];
         }
     }
 
     // first byte is length (including header), second byte is string type
-    _desc_str[0] = (TUSB_DESC_STRING << 8) | (2 * chr_count + 2);
+    desc_str[0] = (uint16_t)((TUSB_DESC_STRING << 8) | (2 * len + 2));
 
-    return _desc_str;
+    return desc_str;
 }
 
 /* [incoherent gibbering to make Windows happy] */

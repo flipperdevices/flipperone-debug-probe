@@ -3,6 +3,6 @@
 #define VERSION "unknown"
 #define BUILD_DIRTY 1
 #define GIT_ORIGIN "https://github.com/XXXXX.git"
-#define BUILD_DATE "2025-11-02"
-#define TARGET 100
+#define BUILD_DATE "2026-03-25"
+#define TARGET 150
 #define FIRMWARE_ORIGIN "Official"

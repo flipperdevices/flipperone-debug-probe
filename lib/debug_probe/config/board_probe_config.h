@@ -38,6 +38,4 @@
 // Target reset config
 #define PROBE_PIN_RESET  gpio_mcu_reset.pin
 
-#define PROBE_PRODUCT_STRING "Debugprobe on Pico (CMSIS-DAP)"
-
 #endif
