@@ -10,7 +10,7 @@
 #define VCP_RX_BUF_SIZE (USB_CDC_PKT_LEN * 3)
 #define VCP_TX_BUF_SIZE (USB_CDC_PKT_LEN * 3)
 
-#define VCP_IF_NUM 0
+#define VCP_IF_NUM 2
 
 #ifdef CLI_VCP_DEBUG
 #define VCP_DEBUG(...) FURI_LOG_D(TAG, __VA_ARGS__)

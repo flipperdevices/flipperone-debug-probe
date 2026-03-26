@@ -5,7 +5,7 @@
 
 #define TAG "Uart0ToCdc"
 
-#define UART0_TO_CDC_IF_NUM 1
+#define UART0_TO_CDC_IF_NUM 0
 #define DEFAULT_BUF_SIZE    1024 * 16
 
 #define DEFAULT_BAUD_RATE 230400
