@@ -88,7 +88,7 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const* coding) {
 
 void furi_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context) {
     furi_check(if_num < IF_NUM_MAX);
-
+    FURI_CRITICAL_ENTER();
     if(callbacks[if_num] != NULL) {
         if(callbacks[if_num]->state_callback != NULL) {
             if(connected == true) callbacks[if_num]->state_callback(cb_ctx[if_num], 0);
@@ -106,6 +106,7 @@ void furi_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context)
             callbacks[if_num]->ctrl_line_callback(cb_ctx[if_num], cdc_ctrl_line_state[if_num]);
         }
     }
+    FURI_CRITICAL_EXIT();
 }
 
 cdc_line_coding_t* furi_hal_cdc_get_port_settings(uint8_t if_num) {
