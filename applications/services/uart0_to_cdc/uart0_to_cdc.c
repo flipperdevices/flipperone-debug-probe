@@ -251,8 +251,7 @@ static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
     FuriHalSerialConfigParity parity = DEFAULT_PARITY;
     FuriHalSerialConfigStopBits stop_bits = DEFAULT_STOP_BITS;
 
-    instance->thread = furi_thread_alloc_ex("Uart0ToCdcWorker", 1024, uart0_to_cdc_worker, instance);
-    furi_thread_start(instance->thread);
+    instance->thread = furi_thread_get_current_id();
 
     instance->serial_handle = furi_hal_serial_control_acquire(FuriHalSerialIdUart0);
     furi_check(instance->serial_handle);
@@ -263,15 +262,15 @@ static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
     furi_hal_serial_set_callback(instance->serial_handle, uart0_to_cdc_tx_complete_irq_cb, uart0_to_cdc_on_irq_cb, instance);
     furi_hal_serial_async_rx_start(instance->serial_handle, true);
 
+
+
     return instance;
 }
 
-static void uart0_to_cdc_app_free(Uart0ToCdcApp* instance) {
+void uart0_to_cdc_app_free(Uart0ToCdcApp* instance) {
     furi_assert(instance);
 
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
-    furi_thread_join(instance->thread);
-    furi_thread_free(instance->thread);
 
     furi_hal_serial_async_rx_stop(instance->serial_handle);
     furi_hal_serial_deinit(instance->serial_handle);
@@ -286,9 +285,7 @@ static void uart0_to_cdc_app_free(Uart0ToCdcApp* instance) {
 int32_t uart0_to_cdc_app(void* p) {
     UNUSED(p);
     Uart0ToCdcApp* instance = uart0_to_cdc_app_alloc();
-    while(1) {
-        furi_delay_ms(FuriWaitForever);
-    }
-    uart0_to_cdc_app_free(instance);
+    uart0_to_cdc_worker(instance);
+    furi_crash("uart0_to_cdc_app exited unexpectedly");
     return 0;
 }
