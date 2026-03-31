@@ -6,9 +6,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(TARGET_HARDWARE "f150" CACHE STRING "Target hardware")
 set(FIRMWARE_TARGET 150 CACHE STRING "Firmware target number")
 set(FIRMWARE_ORIGIN "Official" CACHE STRING "Firmware origin")
+set(TARGET_HARDWARE "f${FIRMWARE_TARGET}")
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
