@@ -71,7 +71,14 @@ execute_process(
     COMMAND git -C ${CMAKE_SOURCE_DIR} describe --tags --abbrev=0
     OUTPUT_VARIABLE GIT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 if(NOT GIT_VERSION)
-    set(GIT_VERSION "unknown")
+    execute_process(
+        COMMAND git -C ${CMAKE_SOURCE_DIR} rev-list --count HEAD
+        OUTPUT_VARIABLE GIT_COMMIT_COUNT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(GIT_COMMIT_COUNT)
+        set(GIT_VERSION "r${GIT_COMMIT_COUNT}")
+    else()
+        set(GIT_VERSION "unknown")
+    endif()
 endif()
 
 execute_process(
