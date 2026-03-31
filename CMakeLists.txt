@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(TARGET_HARDWARE "f150" CACHE STRING "Target hardware")
+set(FIRMWARE_TARGET 150 CACHE STRING "Firmware target number")
+set(FIRMWARE_ORIGIN "Official" CACHE STRING "Firmware origin")
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
@@ -50,6 +52,47 @@ add_compile_options(-Wno-unused-but-set-variable)
 # clay.c has some warnings also
 add_compile_options(-Wno-unknown-pragmas)
 
+# --- Git version info ---
+execute_process(
+    COMMAND git -C ${CMAKE_SOURCE_DIR} rev-parse --short HEAD
+    OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT GIT_COMMIT)
+    set(GIT_COMMIT "unknown")
+endif()
+
+execute_process(
+    COMMAND git -C ${CMAKE_SOURCE_DIR} rev-parse --abbrev-ref HEAD
+    OUTPUT_VARIABLE GIT_BRANCH OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT GIT_BRANCH)
+    set(GIT_BRANCH "unknown")
+endif()
+
+execute_process(
+    COMMAND git -C ${CMAKE_SOURCE_DIR} describe --tags --abbrev=0
+    OUTPUT_VARIABLE GIT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT GIT_VERSION)
+    set(GIT_VERSION "unknown")
+endif()
+
+execute_process(
+    COMMAND git -C ${CMAKE_SOURCE_DIR} status --porcelain
+    OUTPUT_VARIABLE GIT_DIRTY_CHECK OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(GIT_DIRTY_CHECK)
+    set(BUILD_DIRTY 1)
+else()
+    set(BUILD_DIRTY 0)
+endif()
+
+execute_process(
+    COMMAND git -C ${CMAKE_SOURCE_DIR} remote get-url origin
+    OUTPUT_VARIABLE GIT_ORIGIN OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+if(NOT GIT_ORIGIN)
+    set(GIT_ORIGIN "unknown")
+endif()
+
+string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
+# --- end git version info ---
+
 # Add executable. Default name is the project name, version 0.1
 file(GLOB_RECURSE SOURCES
     "lib/furi/*.c*" 
@@ -68,9 +111,22 @@ file(GLOB_RECURSE SOURCES
     "targets/${TARGET_HARDWARE}/src/*.c*" 
 )
 
-add_executable(${PROJECT_NAME} 
+add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
+
+set(VERSION_COMPILE_DEFS
+    "GIT_COMMIT=\"${GIT_COMMIT}\""
+    "GIT_BRANCH=\"${GIT_BRANCH}\""
+    "VERSION=\"${GIT_VERSION}\""
+    "BUILD_DIRTY=${BUILD_DIRTY}"
+    "GIT_ORIGIN=\"${GIT_ORIGIN}\""
+    "BUILD_DATE=\"${BUILD_DATE}\""
+    "TARGET=${FIRMWARE_TARGET}"
+    "FIRMWARE_ORIGIN=\"${FIRMWARE_ORIGIN}\""
+)
+set_source_files_properties(lib/furi/version/version.c PROPERTIES
+    COMPILE_DEFINITIONS "${VERSION_COMPILE_DEFS}")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE 
     PICO_DEFAULT_UART_TX_PIN=0
