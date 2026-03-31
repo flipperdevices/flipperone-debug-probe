@@ -27,6 +27,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
+
 # TODO: custom board with RP2350_B_
 set(PICO_BOARD pico2 CACHE STRING "Board type")
 set(TINYUSB_OPT_OS OPT_OS_FREERTOS CACHE STRING "TinyUSB OS option")
@@ -52,58 +53,9 @@ add_compile_options(-Wno-unused-but-set-variable)
 # clay.c has some warnings also
 add_compile_options(-Wno-unknown-pragmas)
 
-# --- Git version info ---
-execute_process(
-    COMMAND git -C ${CMAKE_SOURCE_DIR} rev-parse --short HEAD
-    OUTPUT_VARIABLE GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-if(NOT GIT_COMMIT)
-    set(GIT_COMMIT "unknown")
-endif()
-
-execute_process(
-    COMMAND git -C ${CMAKE_SOURCE_DIR} rev-parse --abbrev-ref HEAD
-    OUTPUT_VARIABLE GIT_BRANCH OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-if(NOT GIT_BRANCH)
-    set(GIT_BRANCH "unknown")
-endif()
-
-execute_process(
-    COMMAND git -C ${CMAKE_SOURCE_DIR} describe --tags --abbrev=0
-    OUTPUT_VARIABLE GIT_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-if(NOT GIT_VERSION)
-    execute_process(
-        COMMAND git -C ${CMAKE_SOURCE_DIR} rev-list --count HEAD
-        OUTPUT_VARIABLE GIT_COMMIT_COUNT OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-    if(GIT_COMMIT_COUNT)
-        set(GIT_VERSION "r${GIT_COMMIT_COUNT}")
-    else()
-        set(GIT_VERSION "unknown")
-    endif()
-endif()
-
-execute_process(
-    COMMAND git -C ${CMAKE_SOURCE_DIR} status --porcelain
-    OUTPUT_VARIABLE GIT_DIRTY_CHECK OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-if(GIT_DIRTY_CHECK)
-    set(BUILD_DIRTY 1)
-else()
-    set(BUILD_DIRTY 0)
-endif()
-
-execute_process(
-    COMMAND git -C ${CMAKE_SOURCE_DIR} remote get-url origin
-    OUTPUT_VARIABLE GIT_ORIGIN OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
-if(NOT GIT_ORIGIN)
-    set(GIT_ORIGIN "unknown")
-endif()
-
-string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
-# --- end git version info ---
-
 # Add executable. Default name is the project name, version 0.1
 file(GLOB_RECURSE SOURCES
-    "lib/furi/*.c*" 
-    "lib/furi/version/*.c*" 
+    "lib/furi/*.c*"
     "lib/furi/core/*.c*"
     "lib/toolbox/*.c*"
     "app/*.c"
@@ -115,27 +67,16 @@ file(GLOB_RECURSE SOURCES
     "applications/*.c"
     "applications/services/*.c"
     "applications/main/*.c"
-    "targets/${TARGET_HARDWARE}/src/*.c*" 
+    "targets/${TARGET_HARDWARE}/src/*.c*"
 )
 
 add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 
-set(VERSION_COMPILE_DEFS
-    "GIT_COMMIT=\"${GIT_COMMIT}\""
-    "GIT_BRANCH=\"${GIT_BRANCH}\""
-    "VERSION=\"${GIT_VERSION}\""
-    "BUILD_DIRTY=${BUILD_DIRTY}"
-    "GIT_ORIGIN=\"${GIT_ORIGIN}\""
-    "BUILD_DATE=\"${BUILD_DATE}\""
-    "TARGET=${FIRMWARE_TARGET}"
-    "FIRMWARE_ORIGIN=\"${FIRMWARE_ORIGIN}\""
-)
-set_source_files_properties(lib/furi/version/version.c PROPERTIES
-    COMPILE_DEFINITIONS "${VERSION_COMPILE_DEFS}")
+include(lib/furi/version/CMakeLists.txt)
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE 
+target_compile_definitions(${PROJECT_NAME} PRIVATE
     PICO_DEFAULT_UART_TX_PIN=0
     PICO_DEFAULT_UART_RX_PIN=1
     PICO_DEFAULT_UART_BAUD_RATE=230400
@@ -143,8 +84,8 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     USE_PRINTF
     USE_DBG_PRINTF
     PICO_USE_MALLOC_MUTEX=0
-    # https://www.raspberrypi.com/documentation/pico-sdk/high_level.html 
-    # Set PICO_FLASH_ASSUME_CORE1_SAFE=1 to explicitly say that core 1 is never using flash. 
+    # https://www.raspberrypi.com/documentation/pico-sdk/high_level.html
+    # Set PICO_FLASH_ASSUME_CORE1_SAFE=1 to explicitly say that core 1 is never using flash.
     # TODO: When enabling multi-core, this needs to be disabled and the correct flash access mechanism implemented
     PICO_FLASH_ASSUME_CORE1_SAFE=1
     #PICO_USE_SW_SPIN_LOCKS=0
