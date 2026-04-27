@@ -6,6 +6,7 @@
 typedef struct {
     const char* name;
     const GpioPin* pin;
+    const GpioMode mode;
 } CliGpioPinNamePair;
 
 static bool cli_command_gpio_parse_value(FuriString* args, uint8_t* value) {
@@ -24,26 +25,32 @@ static const CliGpioPinNamePair gpios[] = {
     {
         .name = "mcu_m40",
         .pin = &gpio_mcu_m40,
+        .mode = GpioModeInput,
     },
     {
         .name = "mcu_m41",
         .pin = &gpio_mcu_m41,
+        .mode = GpioModeInput,
     },
     {
         .name = "cpu_d2",
         .pin = &gpio_cpu_d2,
+        .mode = GpioModeInput,
     },
     {
         .name = "cpu_d3",
         .pin = &gpio_cpu_d3,
+        .mode = GpioModeInput,
     },
     {
         .name = "mcu_reset",
         .pin = &gpio_mcu_reset,
+        .mode = GpioModeOutputOpenDrain,
     },
     {
         .name = "cpu_reset",
         .pin = &gpio_cpu_reset,
+        .mode = GpioModeOutputOpenDrain,
     },
 
 };
@@ -51,14 +58,22 @@ static const CliGpioPinNamePair gpios[] = {
 static void gpio_print_pins(void) {
     uint8_t n = COUNT_OF(gpios);
     for(uint8_t i = 0; i < n; i++) {
-        const char* format = i + 1 == n ? "%s" : "%s, ";
-        printf(format, gpios[i].name);
+        if(gpios[i].mode == GpioModeInput) {
+            printf("\t%s\t\t(input mode)\r\n", gpios[i].name);
+        } else if(gpios[i].mode == GpioModeOutputOpenDrain) {
+            printf("\t%s\t(output open-drain mode)\r\n", gpios[i].name);
+        } else if(gpios[i].mode == GpioModeOutputPushPull) {
+            printf("\t%s\t(output push-pull mode)\r\n", gpios[i].name);
+        } else {
+            printf("\t%s\t(unsupported %u mode )\r\n", gpios[i].name, gpios[i].mode);
+        }
     }
 }
 
 static void cli_command_gpio_print_usage(void) {
     printf("Usage:\r\n");
-    printf("gpio <pin_name> <0|1>\t - Set gpio value\r\n");
+    printf("gpio <pin_name> <0|1>\t - Set gpio value, if pin is output\r\n");
+    printf("gpio <pin_name>\t\t - Read gpio value, if pin is input\r\n");
     printf("Pins: ");
     gpio_print_pins();
 }
@@ -94,11 +109,27 @@ void cli_command_gpio(Cli* cli, FuriString* args, void* context) {
 
         uint8_t value;
         if(!cli_command_gpio_parse_value(args, &value)) {
-            cli_command_gpio_print_usage();
+            if(pin_description->mode == GpioModeInput) {
+                bool pin_value = furi_hal_gpio_read(pin_description->pin);
+                printf("Pin %s => %u\r\n", pin_description->name, pin_value);
+            } else {
+                printf("Pin %s is an output pin, value argument is required\r\n", pin_description->name);
+                cli_command_gpio_print_usage();
+            }
             break;
         }
 
-        furi_hal_gpio_write(pin_description->pin, value);
-        printf("Pin %s => %u", pin_description->name, value);
+        if(pin_description->mode == GpioModeOutputOpenDrain) {
+            furi_hal_gpio_write_open_drain(pin_description->pin, value);
+            printf("Pin %s => %u\r\n", pin_description->name, value);
+        } else if(pin_description->mode == GpioModeOutputPushPull) {
+            furi_hal_gpio_write(pin_description->pin, value);
+            printf("Pin %s => %u\r\n", pin_description->name, value);
+        } else if(pin_description->mode == GpioModeInput) {
+            printf("Pin %s is an input pin, cannot set value\r\n", pin_description->name);
+        } else {
+            printf("Pin %s has unsupported mode %u\r\n", pin_description->name, pin_description->mode);
+        }
+
     } while(false);
 }

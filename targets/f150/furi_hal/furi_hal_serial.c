@@ -187,7 +187,7 @@ void furi_hal_serial_init(FuriHalSerialHandle* handle, uint32_t baud_rate) {
     for(size_t i = 0; i < FuriHalSerialPinMax; i++) {
         const GpioPin* gpio = furi_hal_serial_resources[serial_id].gpio[i];
         if(gpio != NULL) {
-            furi_hal_gpio_init_ex(gpio, GpioModeOutputPushPull, GpioPullNo, GpioSpeedFast, furi_hal_serial_resources[serial_id].alt_fn);
+            furi_hal_gpio_init_ex(gpio, GpioModeOutputPushPull, GpioPullUp, GpioSpeedFast, furi_hal_serial_resources[serial_id].alt_fn);
         }
     }
 
