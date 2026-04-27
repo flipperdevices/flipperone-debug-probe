@@ -1,7 +1,6 @@
 #include "debug_probe.h"
 #include <tusb.h>
 #include <DAP.h>
-#include <tusb_edpt_handler.h>
 
 static uint8_t TxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
 static uint8_t RxDataBuffer[CFG_TUD_HID_EP_BUFSIZE];
@@ -12,6 +11,10 @@ void debug_probe_init(void) {
 
 void debug_probe_dap_start_thread(void) {
     dap_thread(NULL);
+}
+
+void debug_probe_set_callback_process(DapCallbackProcess callback, void* context) {
+    dap_set_callback_process(callback, context);
 }
 
 uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen) {

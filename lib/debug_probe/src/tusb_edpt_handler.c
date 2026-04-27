@@ -21,6 +21,10 @@ static buffer_t USBResponseBuffer;
 
 static FuriSemaphore* edpt_spoon;
 FuriThreadId thread_id;
+
+static DapCallbackProcess callback_process;
+static void* callback_context;
+
 #define DAP_THREAD_FLAG_WAKEUP (0x1)
 
 #define WR_IDX(x) (x.wptr % DAP_PACKET_COUNT)
@@ -35,6 +39,11 @@ bool buffer_full(buffer_t* buffer) {
 
 bool buffer_empty(buffer_t* buffer) {
     return (buffer->wptr == buffer->rptr);
+}
+
+void dap_set_callback_process(DapCallbackProcess callback, void* context) {
+    callback_process = callback;
+    callback_context = context;
 }
 
 void dap_edpt_init(void) {
@@ -194,6 +203,10 @@ void dap_thread(void* ptr) {
         // Wait for usb CB wake
         furi_thread_flags_wait(DAP_THREAD_FLAG_WAKEUP, FuriFlagWaitAny, FuriWaitForever);
 
+        if(callback_process) {
+            callback_process(true, callback_context);
+        }
+
         while(USBRequestBuffer.rptr != USBRequestBuffer.wptr) {
             /*
 			 * Atomic command support - buffer QueueCommands, but don't process them
@@ -253,6 +266,10 @@ void dap_thread(void* ptr) {
                 USBResponseBuffer.wasEmpty = false;
             }
             furi_semaphore_release(edpt_spoon);
+        }
+
+        if(callback_process) {
+            callback_process(false, callback_context);
         }
     } while(1);
     PROBE_DEBUG("DAP thread exit");

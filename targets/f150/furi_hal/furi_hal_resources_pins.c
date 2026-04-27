@@ -19,7 +19,7 @@ const GpioPin gpio_cpu_d2 = {.pin = 11};
 const GpioPin gpio_mcu_m40 = {.pin = 12};
 const GpioPin gpio_mcu_m41 = {.pin = 13};
 
-const GpioPin gpio_led = {.pin = 25};
+const GpioPin gpio_led = {.pin = 20};
 
 const GpioPin gpio_debug_tx = {.pin = 16};
 
