@@ -165,7 +165,7 @@ void furi_hal_serial_init(FuriHalSerialHandle* handle, uint32_t baud_rate) {
     furi_check(furi_hal_serial[serial_id] == NULL);
 
     if(serial_id == FuriHalSerialIdUartPio) {
-        uart_pio_init(baud_rate);
+        uart_pio_init(baud_rate, furi_hal_serial_resources[serial_id].gpio[FuriHalSerialPinTx]);
         return;
     }
 
