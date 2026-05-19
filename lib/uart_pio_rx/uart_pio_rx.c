@@ -45,6 +45,7 @@ void uart_pio_rx_init(uint32_t baud_rate, const GpioPin* gpio_rx) {
 
     bool success = pio_claim_free_sm_and_add_program_for_gpio_range(
         &uart_rx_program, &uart_pio_instance->pio, &uart_pio_instance->sm, &uart_pio_instance->offset, uart_pio_instance->gpio_rx->pin, 1, true);
+    furi_check(success);
     uart_rx_program_init(uart_pio_instance->pio, uart_pio_instance->sm, uart_pio_instance->offset, uart_pio_instance->gpio_rx->pin, baud_rate);
 
     // Find a free irq
@@ -88,7 +89,7 @@ void uart_pio_rx_set_baud_rate(uint32_t baud_rate) {
 
     UartPioRxCallback old_callback = uart_pio_instance->rx_callback;
     void* old_context = uart_pio_instance->rx_context;
-    
+
     uart_pio_rx_deinit();
     uart_pio_rx_init(baud_rate, uart_pio_instance->gpio_rx);
     uart_pio_instance->baud_rate = baud_rate;
