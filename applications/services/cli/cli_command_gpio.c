@@ -27,11 +27,11 @@ static const CliGpioPinNamePair gpios[] = {
         .pin = &gpio_mcu_m40,
         .mode = GpioModeInput,
     },
-    {
-        .name = "mcu_m41",
-        .pin = &gpio_mcu_m41,
-        .mode = GpioModeInput,
-    },
+    // {
+    //     .name = "mcu_m41",
+    //     .pin = &gpio_mcu_m41,
+    //     .mode = GpioModeInput,
+    // },
     {
         .name = "cpu_d2",
         .pin = &gpio_cpu_d2,

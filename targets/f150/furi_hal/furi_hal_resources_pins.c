@@ -17,11 +17,13 @@ const GpioPin gpio_cpu_d3 = {.pin = 10};
 const GpioPin gpio_cpu_d2 = {.pin = 11};
 
 const GpioPin gpio_mcu_m40 = {.pin = 12};
-const GpioPin gpio_mcu_m41 = {.pin = 13};
+//const GpioPin gpio_mcu_m41 = {.pin = 13};
+
+const GpioPin gpio_mcu_debug_rx = {.pin = 13};
 
 const GpioPin gpio_led = {.pin = 20};
 
-const GpioPin gpio_debug_tx = {.pin = 16};
+const GpioPin gpio_debug_tx = {.pin = 18};
 
 const GpioPinRecord gpio_pins[] = {};
 const size_t gpio_pins_count = COUNT_OF(gpio_pins);

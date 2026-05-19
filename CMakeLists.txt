@@ -116,6 +116,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio_rx)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/mlib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/freertos)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pico-kvstore)
@@ -133,6 +134,7 @@ target_link_libraries(${PROJECT_NAME}
     hardware_clocks
     pico_unique_id
     uart_pio
+    uart_pio_rx
     tinyusb_device
     freertos
     mlib
@@ -142,7 +144,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # executing code from RAM
-pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
+#pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
 #pico_set_binary_type(${PROJECT_NAME} no_flash)
 
 pico_add_extra_outputs(${PROJECT_NAME})
