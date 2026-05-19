@@ -147,8 +147,8 @@ static int32_t uart1_to_cdc_worker(void* context) {
             length = furi_stream_buffer_receive(instance->tx_stream, instance->data_buffer, CFG_TUD_CDC_RX_BUFSIZE, 0);
             UART1_TO_CDC_LOG("UART Tx %d", length);
             if(length > 0) {
-                instance->cdc_tx_idle = false;
                 if(instance->connected) {
+                    instance->cdc_tx_idle = false;
                     furi_hal_cdc_send(UART1_TO_CDC_IF_NUM, instance->data_buffer, length);
                 }
             } else {
