@@ -5,6 +5,7 @@
 
 #define TAG "Uart1ToCdc"
 
+#define UART1_TO_CDC_PKT_LEN (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
 #define UART1_TO_CDC_IF_NUM 1
 #define DEFAULT_BUF_SIZE    1024 * 16
 
@@ -41,7 +42,7 @@ typedef struct {
     FuriStreamBuffer* tx_stream;
     FuriHalSerialHandle* serial_handle;
     bool cdc_tx_idle;
-    uint8_t data_buffer[CFG_TUD_CDC_RX_BUFSIZE];
+    uint8_t data_buffer[UART1_TO_CDC_PKT_LEN];
     bool connected;
     uint32_t baudrate;
 } Uart1ToCdcApp;
@@ -122,8 +123,8 @@ static int32_t uart1_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcRx) {
-            if(furi_stream_buffer_spaces_available(instance->rx_stream) >= CFG_TUD_CDC_RX_BUFSIZE) {
-                length = furi_hal_cdc_receive(UART1_TO_CDC_IF_NUM, instance->data_buffer, CFG_TUD_CDC_RX_BUFSIZE);
+            if(furi_stream_buffer_spaces_available(instance->rx_stream) >= UART1_TO_CDC_PKT_LEN) {
+                length = furi_hal_cdc_receive(UART1_TO_CDC_IF_NUM, instance->data_buffer, UART1_TO_CDC_PKT_LEN);
                 UART1_TO_CDC_LOG("Rx %d", length);
 
                 if(length > 0) {
@@ -144,7 +145,7 @@ static int32_t uart1_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcTx) {
-            length = furi_stream_buffer_receive(instance->tx_stream, instance->data_buffer, CFG_TUD_CDC_RX_BUFSIZE, 0);
+            length = furi_stream_buffer_receive(instance->tx_stream, instance->data_buffer, UART1_TO_CDC_PKT_LEN, 0);
             UART1_TO_CDC_LOG("UART Tx %d", length);
             if(length > 0) {
                 if(instance->connected) {
@@ -208,11 +209,11 @@ static void uart1_to_cdc_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxE
     Uart1ToCdcApp* instance = context;
     WorkerEventFlags flag = 0;
 
-    uint8_t data[CFG_TUD_CDC_RX_BUFSIZE];
+    uint8_t data[UART1_TO_CDC_PKT_LEN];
     size_t length = 0;
     size_t buf_size_rx = 0;
     if(event & (FuriHalSerialRxEventData | FuriHalSerialRxEventIdle)) {
-        length = furi_hal_serial_rx_data_non_blocking(handle, data, CFG_TUD_CDC_RX_BUFSIZE);
+        length = furi_hal_serial_rx_data_non_blocking(handle, data, UART1_TO_CDC_PKT_LEN);
         if(instance->connected) {
             buf_size_rx = furi_stream_buffer_send(instance->tx_stream, &data, length, 0);
             if(buf_size_rx != length) {

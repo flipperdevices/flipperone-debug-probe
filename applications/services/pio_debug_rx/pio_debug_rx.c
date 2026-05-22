@@ -6,6 +6,7 @@
 
 #define TAG "PioDebugRx"
 
+#define PIO_DEBUG_RX_TO_CDC_PKT_LEN (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
 #define PIO_DEBUG_RX_TO_CDC_IF_NUM 2
 
 #define DEFAULT_BAUD_RATE 230400
@@ -35,7 +36,7 @@ static CdcCallbacks pio_debug_rx_to_cdc_cb = {
 typedef struct {
     FuriThread* thread;
     bool cdc_tx_idle;
-    uint8_t data_buffer[CFG_TUD_CDC_RX_BUFSIZE];
+    uint8_t data_buffer[PIO_DEBUG_RX_TO_CDC_PKT_LEN];
     bool connected;
     uint32_t baudrate;
 } PioDebugRxToCdcApp;
@@ -107,7 +108,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
 
         if(events & WorkerEventCdcRx) {
             // receive data to null
-            furi_hal_cdc_receive(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, CFG_TUD_CDC_RX_BUFSIZE);
+            furi_hal_cdc_receive(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN);
         }
 
         if(events & WorkerEventUartRx) {
@@ -118,7 +119,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcTx) {
-            length = uart_pio_rx_read(instance->data_buffer, CFG_TUD_CDC_RX_BUFSIZE, 0);
+            length = uart_pio_rx_read(instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN, 0);
             PIO_DEBUG_RX_TO_CDC_LOG("UART Tx %d", length);
             if(length > 0) {
                 if(instance->connected) {
