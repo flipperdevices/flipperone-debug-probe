@@ -7,7 +7,7 @@
 #define TAG "PioDebugRx"
 
 #define PIO_DEBUG_RX_TO_CDC_PKT_LEN (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
-#define PIO_DEBUG_RX_TO_CDC_IF_NUM 2
+#define PIO_DEBUG_RX_TO_CDC_IF_NUM  2
 
 #define DEFAULT_BAUD_RATE 230400
 
@@ -104,7 +104,6 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
     size_t length = 0;
     while(1) {
         uint32_t events = furi_thread_flags_wait(WORKER_EVENTS_MASK, FuriFlagWaitAny, FuriWaitForever);
-        furi_delay_us(100);
 
         if(events & WorkerEventCdcRx) {
             // receive data to null
@@ -154,7 +153,6 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventStop) break;
-        furi_delay_us(100);
     }
 
     furi_hal_cdc_set_callbacks(PIO_DEBUG_RX_TO_CDC_IF_NUM, NULL, NULL);

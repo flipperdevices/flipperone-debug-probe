@@ -6,8 +6,8 @@
 #define TAG "Uart1ToCdc"
 
 #define UART1_TO_CDC_PKT_LEN (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
-#define UART1_TO_CDC_IF_NUM 1
-#define DEFAULT_BUF_SIZE    1024 * 16
+#define UART1_TO_CDC_IF_NUM  1
+#define DEFAULT_BUF_SIZE     1024 * 16
 
 #define DEFAULT_BAUD_RATE 230400
 #define DEFAULT_DATA_BITS FuriHalSerialConfigDataBits8
@@ -112,7 +112,6 @@ static int32_t uart1_to_cdc_worker(void* context) {
     size_t length = 0;
     while(1) {
         uint32_t events = furi_thread_flags_wait(WORKER_EVENTS_MASK, FuriFlagWaitAny, FuriWaitForever);
-        furi_delay_us(100);
         if(events & WorkerEventUartTxComplete) {
             if(missed_rx) {
                 events |= WorkerEventCdcRx;
@@ -195,7 +194,6 @@ static int32_t uart1_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventStop) break;
-        furi_delay_us(100);
     }
 
     furi_hal_cdc_set_callbacks(UART1_TO_CDC_IF_NUM, NULL, NULL);
