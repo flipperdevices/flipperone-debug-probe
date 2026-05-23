@@ -2,7 +2,7 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include <furi_hal_usb_cdc.h>
-#include "uart_pio_rx.h"
+#include <uart_pio_rx.h>
 
 #define TAG "PioDebugRx"
 
@@ -100,7 +100,6 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
     FURI_LOG_D(TAG, "Start");
 
     furi_hal_cdc_set_callbacks(PIO_DEBUG_RX_TO_CDC_IF_NUM, &pio_debug_rx_to_cdc_cb, instance);
-    size_t missed_rx = 0;
     size_t length = 0;
     while(1) {
         uint32_t events = furi_thread_flags_wait(WORKER_EVENTS_MASK, FuriFlagWaitAny, FuriWaitForever);

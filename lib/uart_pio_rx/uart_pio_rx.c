@@ -59,6 +59,7 @@ void uart_pio_rx_init(uint32_t baud_rate, const GpioPin* gpio_rx) {
 
     // Enable interrupt
     irq_add_shared_handler(uart_pio_instance->pio_irq, uart_pio_rx_irq_func, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY); // Add a shared IRQ handler
+    irq_set_priority(uart_pio_instance->pio_irq, configMAX_API_CALL_INTERRUPT_PRIORITY); // Set highest priority for the IRQ
     irq_set_enabled(uart_pio_instance->pio_irq, true); // Enable the IRQ
     uart_pio_instance->irq_index = uart_pio_instance->pio_irq - pio_get_irq_num(uart_pio_instance->pio, 0); // Get index of the IRQ
     pio_set_irqn_source_enabled(
@@ -89,10 +90,9 @@ void uart_pio_rx_set_baud_rate(uint32_t baud_rate) {
 
     UartPioRxCallback old_callback = uart_pio_instance->rx_callback;
     void* old_context = uart_pio_instance->rx_context;
-
+    const GpioPin* gpio_rx = uart_pio_instance->gpio_rx;
     uart_pio_rx_deinit();
-    uart_pio_rx_init(baud_rate, uart_pio_instance->gpio_rx);
-    uart_pio_instance->baud_rate = baud_rate;
+    uart_pio_rx_init(baud_rate, gpio_rx);
 
     uart_pio_rx_set_callback(old_callback, old_context);
 }
