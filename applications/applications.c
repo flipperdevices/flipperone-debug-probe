@@ -4,7 +4,7 @@ const char* FLIPPER_AUTORUN_APP_NAME = "";
 
 // services
 extern int32_t usb_srv(void* p);
-extern int32_t cli_srv(void* p);
+//extern int32_t cli_srv(void* p);
 extern int32_t uart0_to_cdc_app(void* p);
 extern int32_t uart1_to_cdc_app(void* p);
 extern int32_t dap_srv(void* p);
@@ -22,13 +22,13 @@ const FlipperInternalApplication FLIPPER_SERVICES[] = {
         .stack_size = 1024,
         .flags = FlipperInternalApplicationFlagDefault,
     },
-        {
-        .app = cli_srv,
-        .name = "CliSrv",
-        .appid = "cli_srv",
-        .stack_size = 1024 * 2,
-        .flags = FlipperInternalApplicationFlagDefault,
-    },
+    //     {
+    //     .app = cli_srv,
+    //     .name = "CliSrv",
+    //     .appid = "cli_srv",
+    //     .stack_size = 1024 * 2,
+    //     .flags = FlipperInternalApplicationFlagDefault,
+    // },
     {
         .app = uart0_to_cdc_app,
         .name = "Uart0ToCdc",
@@ -73,7 +73,7 @@ const FlipperInternalApplication FLIPPER_APPS[] = {
 
 const size_t FLIPPER_APPS_COUNT = COUNT_OF(FLIPPER_APPS);
 
-const FlipperInternalCommandApplication FLIPPER_CLI_COMMANDS[] = {
+// const FlipperInternalCommandApplication FLIPPER_CLI_COMMANDS[] = {
 
-};
-const size_t FLIPPER_CLI_COMMANDS_COUNT = COUNT_OF(FLIPPER_CLI_COMMANDS);
+// };
+// const size_t FLIPPER_CLI_COMMANDS_COUNT = COUNT_OF(FLIPPER_CLI_COMMANDS);

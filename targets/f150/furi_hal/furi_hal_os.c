@@ -8,6 +8,7 @@
 #include <furi_hal_debug.h>
 #include <furi_hal_gpio.h>
 #include <furi_hal_resources.h>
+#include <pico/time.h>
 
 #define TAG "FuriHalOs"
 

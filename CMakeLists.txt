@@ -55,8 +55,9 @@ add_compile_options(-Wno-unknown-pragmas)
 
 # Add executable. Default name is the project name, version 0.1
 file(GLOB_RECURSE SOURCES
-    "lib/furi/*.c*"
-    "lib/furi/core/*.c*"
+    "lib/corelibs/lib/furi/*.c*"
+    "lib/corelibs/lib/furi/core/*.c*"
+    "lib/corelibs/lib/version/*.c*"
     "lib/toolbox/*.c*"
     "app/*.c"
     "app/theme/*.c"
@@ -74,7 +75,7 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 )
 
-include(lib/furi/version/CMakeLists.txt)
+include(lib/corelibs/lib/version/CMakeLists.txt)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     PICO_DEFAULT_UART_TX_PIN=0
@@ -104,20 +105,22 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/applications
     ${CMAKE_CURRENT_LIST_DIR}/applications/services
     ${CMAKE_CURRENT_LIST_DIR}/lib/toolbox
-    ${CMAKE_CURRENT_LIST_DIR}/lib/furi
+    ${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/furi
+    ${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/version
     ${CMAKE_CURRENT_LIST_DIR}/lib/tusb
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/src
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/furi_hal
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/furi_bsp
     ${CMAKE_CURRENT_LIST_DIR}/targets/${TARGET_HARDWARE}/config
-    ${CMAKE_CURRENT_LIST_DIR}/lib
+    ${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib
     ${CMAKE_CURRENT_LIST_DIR}/lib/freertos
-    ${CMAKE_CURRENT_LIST_DIR}/lib/mlib
+    ${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/mlib
+    ${CMAKE_CURRENT_LIST_DIR}/lib
 )
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio_rx)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/mlib)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/mlib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/freertos)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pico-kvstore)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/debug_probe)
