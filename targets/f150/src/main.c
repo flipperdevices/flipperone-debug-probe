@@ -33,8 +33,10 @@ int32_t init_task(void* context) {
 }
 
 int main(void) {
-    //Initialize FURI layer
+    //Todo: FIX .LD file
     furi_hal_memory_init();
+    
+    //Initialize FURI layer
     furi_init();
 
     // Critical FURI HAL
