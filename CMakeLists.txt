@@ -120,7 +120,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/uart_pio_rx)
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/mlib)
+# add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/mlib)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/freertos)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/pico-kvstore)
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/lib/debug_probe)
@@ -147,7 +148,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # executing code from RAM
-pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
+# pico_set_binary_type(${PROJECT_NAME} copy_to_ram)
 #pico_set_binary_type(${PROJECT_NAME} no_flash)
 
 pico_add_extra_outputs(${PROJECT_NAME})
