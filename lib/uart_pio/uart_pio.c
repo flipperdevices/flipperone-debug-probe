@@ -1,3 +1,4 @@
+#include <furi.h>
 #include "uart_pio.h"
 #include "hardware/pio.h"
 #include "uart_tx.pio.h"
@@ -19,6 +20,7 @@ void uart_pio_init(uint32_t baud_rate, const GpioPin* gpio_tx) {
     uart_pio_instance->baud_rate = baud_rate;
     bool success = pio_claim_free_sm_and_add_program_for_gpio_range(
         &uart_tx_program, &uart_pio_instance->pio, &uart_pio_instance->sm, &uart_pio_instance->offset, uart_pio_instance->gpio_tx->pin, 1, true);
+    furi_check(success);
     uart_tx_program_init(uart_pio_instance->pio, uart_pio_instance->sm, uart_pio_instance->offset, uart_pio_instance->gpio_tx->pin, baud_rate);
 }
 
@@ -31,9 +33,9 @@ void uart_pio_deinit(void) {
 
 void uart_pio_set_baud_rate(uint32_t baud_rate) {
     furi_check(uart_pio_instance != NULL);
+    const GpioPin* gpio_tx = uart_pio_instance->gpio_tx;
     uart_pio_deinit();
-    uart_pio_init(baud_rate, uart_pio_instance->gpio_tx);
-    uart_pio_instance->baud_rate = baud_rate;
+    uart_pio_init(baud_rate, gpio_tx);
 }
 
 uint32_t uart_pio_get_baud_rate(void) {
@@ -41,7 +43,7 @@ uint32_t uart_pio_get_baud_rate(void) {
     return uart_pio_instance->baud_rate;
 }
 
-size_t uart_pio_bloking_tx(const uint8_t* data, size_t size) {
+size_t uart_pio_blocking_tx(const uint8_t* data, size_t size) {
     furi_check(uart_pio_instance != NULL);
     for(size_t i = 0; i < size; i++) {
         uart_tx_program_putc(uart_pio_instance->pio, uart_pio_instance->sm, data[i]);

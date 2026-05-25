@@ -2,7 +2,7 @@
 
 void furi_hal_resources_init(void) {
     furi_hal_gpio_init_simple(&gpio_mcu_m40, GpioModeInput);
-    furi_hal_gpio_init_simple(&gpio_mcu_m41, GpioModeInput);
+    //furi_hal_gpio_init_simple(&gpio_mcu_m41, GpioModeInput);
     furi_hal_gpio_init_simple(&gpio_cpu_d3, GpioModeInput);
     furi_hal_gpio_init_simple(&gpio_cpu_d2, GpioModeInput);
 

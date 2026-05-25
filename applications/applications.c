@@ -9,6 +9,7 @@ extern int32_t uart0_to_cdc_app(void* p);
 extern int32_t uart1_to_cdc_app(void* p);
 extern int32_t dap_srv(void* p);
 extern int32_t notification_srv(void* p);
+extern int32_t pio_debug_rx_to_cdc_app(void* p);
 // applications
 
 // CLI commands
@@ -39,6 +40,13 @@ const FlipperInternalApplication FLIPPER_SERVICES[] = {
         .app = uart1_to_cdc_app,
         .name = "Uart1ToCdc",
         .appid = "uart1_to_cdc",
+        .stack_size = 2048,
+        .flags = FlipperInternalApplicationFlagDefault,
+    },
+    {
+        .app = pio_debug_rx_to_cdc_app,
+        .name = "PioDebugRx",
+        .appid = "pio_debug_rx",
         .stack_size = 2048,
         .flags = FlipperInternalApplicationFlagDefault,
     },

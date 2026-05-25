@@ -34,7 +34,8 @@ extern const GpioPin gpio_cpu_d3;
 extern const GpioPin gpio_cpu_d2;
 
 extern const GpioPin gpio_mcu_m40;
-extern const GpioPin gpio_mcu_m41;
+//extern const GpioPin gpio_mcu_m41;
+extern const GpioPin gpio_mcu_debug_rx;
 
 extern const GpioPin gpio_led;
 extern const GpioPin gpio_debug_tx;
