@@ -2,12 +2,13 @@
 #include <furi_hal_power.h>
 #include <furi_hal_nvm.h>
 #include <furi_hal_gpio.h>
+#include <furi_hal_cortex.h>
 
 #define TAG "FuriHal"
 
 void furi_hal_init_early(void) {
+    furi_hal_cortex_init_early();
     furi_hal_nvm_init();
-    // furi_hal_cortex_init_early();
     // furi_hal_clock_init_early();
     // furi_hal_resources_init_early();
     furi_hal_os_init();
