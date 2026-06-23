@@ -6,7 +6,8 @@
 
 #define TAG "PioDebugRx"
 
-#define PIO_DEBUG_RX_TO_CDC_PKT_LEN (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
+#define PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX (CFG_TUD_CDC_RX_BUFSIZE)
+#define PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
 #define PIO_DEBUG_RX_TO_CDC_IF_NUM  2
 
 #define DEFAULT_BAUD_RATE 230400
@@ -36,7 +37,7 @@ static CdcCallbacks pio_debug_rx_to_cdc_cb = {
 typedef struct {
     FuriThread* thread;
     bool cdc_tx_idle;
-    uint8_t data_buffer[PIO_DEBUG_RX_TO_CDC_PKT_LEN];
+    uint8_t data_buffer[PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX];
     bool connected;
     uint32_t baudrate;
 } PioDebugRxToCdcApp;
@@ -106,7 +107,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
 
         if(events & WorkerEventCdcRx) {
             // receive data to null
-            furi_hal_cdc_receive(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN);
+            furi_hal_cdc_receive(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX);
         }
 
         if(events & WorkerEventUartRx) {
@@ -117,7 +118,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcTx) {
-            length = uart_pio_rx_read(instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN, 0);
+            length = uart_pio_rx_read(instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX, 0);
             PIO_DEBUG_RX_TO_CDC_LOG("UART Tx %d", length);
             if(length > 0) {
                 if(instance->connected) {
@@ -148,6 +149,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
             PIO_DEBUG_RX_TO_CDC_LOG("CDC config changed");
             //Todo: No need update baud rate
             // uart_pio_rx_set_baud_rate(instance->baudrate);
+            PIO_DEBUG_RX_TO_CDC_LOG("Note: No need update baud rate, because the baud rate is fixed in the PIO debug rx");
             PIO_DEBUG_RX_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
         }
 
@@ -167,6 +169,7 @@ static void pio_debug_rx_isr_callback(void* context) {
 }
 
 static PioDebugRxToCdcApp* pio_debug_rx_to_cdc_app_alloc(void) {
+    furi_check(PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX >= PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX);
     PioDebugRxToCdcApp* instance = malloc(sizeof(PioDebugRxToCdcApp));
 
     // Enable uart listener
