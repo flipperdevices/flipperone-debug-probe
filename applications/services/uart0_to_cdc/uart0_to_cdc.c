@@ -5,16 +5,17 @@
 
 #define TAG "Uart0ToCdc"
 
-#define UART0_TO_CDC_PKT_LEN (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
-#define UART0_TO_CDC_IF_NUM  0
-#define DEFAULT_BUF_SIZE     1024 * 16
+#define UART0_TO_CDC_PKT_LEN_RX (CFG_TUD_CDC_RX_BUFSIZE)
+#define UART0_TO_CDC_PKT_LEN_TX (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
+#define UART0_TO_CDC_IF_NUM     0
+#define DEFAULT_BUF_SIZE        1024 * 16
 
 #define DEFAULT_BAUD_RATE 230400
 #define DEFAULT_DATA_BITS FuriHalSerialConfigDataBits8
 #define DEFAULT_PARITY    FuriHalSerialConfigParityNone
 #define DEFAULT_STOP_BITS FuriHalSerialConfigStopBits_1
 
-// #define UART0_TO_CDC_DEBUG
+//#define UART0_TO_CDC_DEBUG
 
 #ifdef UART0_TO_CDC_DEBUG
 #define UART0_TO_CDC_LOG(...) FURI_LOG_D(TAG, __VA_ARGS__)
@@ -42,7 +43,7 @@ typedef struct {
     FuriStreamBuffer* tx_stream;
     FuriHalSerialHandle* serial_handle;
     bool cdc_tx_idle;
-    uint8_t data_buffer[UART0_TO_CDC_PKT_LEN];
+    uint8_t data_buffer[UART0_TO_CDC_PKT_LEN_RX];
     bool connected;
     uint32_t baudrate;
 } Uart0ToCdcApp;
@@ -123,8 +124,8 @@ static int32_t uart0_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcRx) {
-            if(furi_stream_buffer_spaces_available(instance->rx_stream) >= UART0_TO_CDC_PKT_LEN) {
-                length = furi_hal_cdc_receive(UART0_TO_CDC_IF_NUM, instance->data_buffer, UART0_TO_CDC_PKT_LEN);
+            if(furi_stream_buffer_spaces_available(instance->rx_stream) >= UART0_TO_CDC_PKT_LEN_RX) {
+                length = furi_hal_cdc_receive(UART0_TO_CDC_IF_NUM, instance->data_buffer, UART0_TO_CDC_PKT_LEN_RX);
                 UART0_TO_CDC_LOG("Rx %d", length);
 
                 if(length > 0) {
@@ -145,7 +146,7 @@ static int32_t uart0_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcTx) {
-            length = furi_stream_buffer_receive(instance->tx_stream, instance->data_buffer, UART0_TO_CDC_PKT_LEN, 0);
+            length = furi_stream_buffer_receive(instance->tx_stream, instance->data_buffer, UART0_TO_CDC_PKT_LEN_TX, 0);
             UART0_TO_CDC_LOG("UART Tx %d", length);
             if(length > 0) {
                 if(instance->connected) {
@@ -208,11 +209,11 @@ static void uart0_to_cdc_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxE
     Uart0ToCdcApp* instance = context;
     WorkerEventFlags flag = 0;
 
-    uint8_t data[UART0_TO_CDC_PKT_LEN];
+    uint8_t data[UART0_TO_CDC_PKT_LEN_TX];
     size_t length = 0;
     size_t buf_size_rx = 0;
     if(event & (FuriHalSerialRxEventData | FuriHalSerialRxEventIdle)) {
-        length = furi_hal_serial_rx_data_non_blocking(handle, data, UART0_TO_CDC_PKT_LEN);
+        length = furi_hal_serial_rx_data_non_blocking(handle, data, UART0_TO_CDC_PKT_LEN_TX);
         if(instance->connected) {
             buf_size_rx = furi_stream_buffer_send(instance->tx_stream, &data, length, 0);
             if(buf_size_rx != length) {
@@ -241,6 +242,7 @@ static void uart0_to_cdc_tx_complete_irq_cb(FuriHalSerialHandle* handle, FuriHal
 }
 
 static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
+    furi_check(UART0_TO_CDC_PKT_LEN_RX >= UART0_TO_CDC_PKT_LEN_TX);
     Uart0ToCdcApp* instance = malloc(sizeof(Uart0ToCdcApp));
     instance->rx_stream = furi_stream_buffer_alloc(DEFAULT_BUF_SIZE, 1);
     instance->tx_stream = furi_stream_buffer_alloc(DEFAULT_BUF_SIZE, 1);
