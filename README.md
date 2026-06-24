@@ -56,3 +56,34 @@ Debug probe is fully open hardware on (WHAT LICENSE?)
 Download schematic, 3D models and gerber files here in Altium project: https://flipper.365.altium.com/designs/14B8CA82-B532-4581-BF6F-641FED8AF7F5
 
 <img width="2800" height="1536" alt="image" src="https://github.com/user-attachments/assets/06c4a491-e4f4-407d-a966-894a8cb9f463" />
+
+# Usage
+
+## Serial Ports
+
+The Flipper One Debug Probe is detected by the operating system as four serial ports.  
+Port names and paths may vary depending on your operating system.
+
+Example device paths on macOS:
+
+| Port | Device path | Description | Baud rate |
+| ---- | ----------- | ----------- | --------- |
+| Port 1 | `/dev/tty.usbmodemflip_one_debug2` | RK3576 CPU console | `1500000` |
+| Port 2 | `/dev/tty.usbmodemflip_one_debug4` | Flipper One MCU CLI | `230400` |
+| Port 3 | `/dev/tty.usbmodemflip_one_debug6` | MCU debug log | `230400` |
+| Port 4 | `/dev/tty.usbmodemflip_one_debug8` | Debug Probe MCU CLI | `230400` |
+
+## Connect to the RK3576 CPU Console on macOS
+
+This example shows how to connect to the RK3576 CPU console on macOS.
+
+We recommend using [`tio`](https://github.com/tio/tio), because it is lightweight and stable. You can install it with `brew install tio`  
+
+### Basic connection
+
+`tio -b 1500000 /dev/tty.usbmodemflip_one_debug2`
+
+### Connection with timestamps
+Use timestamps to see delays between boot log lines and identify where the boot process slows down:  
+
+`tio --timestamp --timestamp-format 24hour-delta -b 1500000 /dev/tty.usbmodemflip_one_debug2`
