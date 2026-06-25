@@ -10,7 +10,7 @@
 #define PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
 #define PIO_DEBUG_RX_TO_CDC_IF_NUM  2
 
-#define DEFAULT_BAUD_RATE 230400
+#define DEFAULT_BAUD_RATE (1500000UL)
 
 //#define PIO_DEBUG_RX_TO_CDC_DEBUG
 
