@@ -2,6 +2,7 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include <furi_hal_usb_cdc.h>
+#include <settings/settings.h>
 
 #define TAG "Uart0ToCdc"
 
@@ -46,6 +47,7 @@ typedef struct {
     uint8_t data_buffer[UART0_TO_CDC_PKT_LEN_RX];
     bool connected;
     uint32_t baudrate;
+    Settings* settings;
 } Uart0ToCdcApp;
 
 typedef enum {
@@ -190,9 +192,13 @@ static int32_t uart0_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcConfig) {
-            UART0_TO_CDC_LOG("CDC config changed");
-            furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
-            UART0_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
+            if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+                UART0_TO_CDC_LOG("CDC config changed");
+                furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
+                UART0_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
+            } else {
+                UART0_TO_CDC_LOG("CDC config changed, but custom baudrate is disabled");
+            }
         }
 
         if(events & WorkerEventStop) break;
@@ -264,14 +270,16 @@ static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
     furi_hal_serial_set_callback(instance->serial_handle, uart0_to_cdc_tx_complete_irq_cb, uart0_to_cdc_on_irq_cb, instance);
     furi_hal_serial_async_rx_start(instance->serial_handle, true);
 
+    instance->settings = furi_record_open(RECORD_SETTINGS);
+
     return instance;
 }
 
 void uart0_to_cdc_app_free(Uart0ToCdcApp* instance) {
     furi_assert(instance);
 
+    furi_record_close(RECORD_SETTINGS);
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
-
     furi_hal_serial_async_rx_stop(instance->serial_handle);
     furi_hal_serial_deinit(instance->serial_handle);
     furi_hal_serial_control_release(instance->serial_handle);

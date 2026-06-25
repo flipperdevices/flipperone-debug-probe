@@ -2,13 +2,14 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include <furi_hal_usb_cdc.h>
+#include <settings/settings.h>
 
 #define TAG "Uart1ToCdc"
 
 #define UART1_TO_CDC_PKT_LEN_RX (CFG_TUD_CDC_RX_BUFSIZE)
 #define UART1_TO_CDC_PKT_LEN_TX (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
-#define UART1_TO_CDC_IF_NUM  1
-#define DEFAULT_BUF_SIZE     (1024 * 16)
+#define UART1_TO_CDC_IF_NUM     1
+#define DEFAULT_BUF_SIZE        (1024 * 16)
 
 #define DEFAULT_BAUD_RATE (1500000UL)
 #define DEFAULT_DATA_BITS FuriHalSerialConfigDataBits8
@@ -46,6 +47,7 @@ typedef struct {
     uint8_t data_buffer[UART1_TO_CDC_PKT_LEN_RX];
     bool connected;
     uint32_t baudrate;
+    Settings* settings;
 } Uart1ToCdcApp;
 
 typedef enum {
@@ -189,9 +191,13 @@ static int32_t uart1_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcConfig) {
-            UART1_TO_CDC_LOG("CDC config changed");
-            furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
-            UART1_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
+            if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+                UART1_TO_CDC_LOG("CDC config changed");
+                furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
+                UART1_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
+            } else {
+                UART1_TO_CDC_LOG("CDC config changed, but custom baudrate is disabled");
+            }
         }
 
         if(events & WorkerEventStop) break;
@@ -263,14 +269,16 @@ static Uart1ToCdcApp* uart1_to_cdc_app_alloc(void) {
     furi_hal_serial_set_callback(instance->serial_handle, uart1_to_cdc_tx_complete_irq_cb, uart1_to_cdc_on_irq_cb, instance);
     furi_hal_serial_async_rx_start(instance->serial_handle, true);
 
+    instance->settings = furi_record_open(RECORD_SETTINGS);
+
     return instance;
 }
 
 void uart1_to_cdc_app_free(Uart1ToCdcApp* instance) {
     furi_assert(instance);
 
+    furi_record_close(RECORD_SETTINGS);
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
-
     furi_hal_serial_async_rx_stop(instance->serial_handle);
     furi_hal_serial_deinit(instance->serial_handle);
     furi_hal_serial_control_release(instance->serial_handle);
