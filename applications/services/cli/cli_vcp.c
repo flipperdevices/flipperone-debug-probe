@@ -14,7 +14,7 @@
 #define VCP_BUF_SIZE         (USB_CDC_PKT_LEN * 16)
 #define VCP_IF_NUM           3
 #define VCP_MESSAGE_Q_LEN    8
-#define CLI_VCP_SHELL_PROMPT "control"
+#define CLI_VCP_SHELL_PROMPT "debug_probe"
 
 //#define CLI_VCP_DEBUG_ENABLE
 

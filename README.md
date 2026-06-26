@@ -69,9 +69,12 @@ Example device paths on macOS:
 | Port | Device path | Description | Baud rate |
 | ---- | ----------- | ----------- | --------- |
 | Port 1 | `/dev/tty.usbmodemflip_one_debug2` | RK3576 CPU console | `1500000` |
-| Port 2 | `/dev/tty.usbmodemflip_one_debug4` | Flipper One MCU CLI | `230400` |
-| Port 3 | `/dev/tty.usbmodemflip_one_debug6` | MCU debug log | `230400` |
-| Port 4 | `/dev/tty.usbmodemflip_one_debug8` | Debug Probe MCU CLI | `230400` |
+| Port 2 | `/dev/tty.usbmodemflip_one_debug4` | Flipper One MCU CLI | `1500000` |
+| Port 3 | `/dev/tty.usbmodemflip_one_debug6` | MCU debug logs | `1500000` |
+| Port 4 | `/dev/tty.usbmodemflip_one_debug8` | Debug Probe MCU CLI | `1500000` |
+
+Each port prints a welcome message when you connect, so you can confirm which port you are on.  
+The baud rate is fixed at `1500000` for all ports, regardless of what you set when connecting.
 
 ## Connect to the RK3576 CPU Console on macOS
 

@@ -2,18 +2,22 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include <furi_hal_usb_cdc.h>
+#include <settings/settings.h>
+#include <cli/cli_ansi.h>
 
 #define TAG "Uart0ToCdc"
 
 #define UART0_TO_CDC_PKT_LEN_RX (CFG_TUD_CDC_RX_BUFSIZE)
 #define UART0_TO_CDC_PKT_LEN_TX (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
 #define UART0_TO_CDC_IF_NUM     0
-#define DEFAULT_BUF_SIZE        1024 * 16
+#define DEFAULT_BUF_SIZE        (1024 * 16)
 
-#define DEFAULT_BAUD_RATE 230400
+#define DEFAULT_BAUD_RATE (1500000UL)
 #define DEFAULT_DATA_BITS FuriHalSerialConfigDataBits8
 #define DEFAULT_PARITY    FuriHalSerialConfigParityNone
 #define DEFAULT_STOP_BITS FuriHalSerialConfigStopBits_1
+
+#define DEFAULT_LOG_MESSAGE "Flipper One CPU console, fixed baud rate:"
 
 //#define UART0_TO_CDC_DEBUG
 
@@ -46,6 +50,7 @@ typedef struct {
     uint8_t data_buffer[UART0_TO_CDC_PKT_LEN_RX];
     bool connected;
     uint32_t baudrate;
+    Settings* settings;
 } Uart0ToCdcApp;
 
 typedef enum {
@@ -176,6 +181,16 @@ static int32_t uart0_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcConnect) {
             UART0_TO_CDC_LOG("CDC connected");
             instance->connected = true;
+            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+                UART0_TO_CDC_LOG("CDC connected, send default log message");
+                uint8_t buf[128];
+                int32_t length =
+                    snprintf((char*)buf, sizeof(buf), ANSI_BG_WHITE ANSI_FG_BR_BLACK "\r\n%s %ld\r\n" ANSI_RESET, DEFAULT_LOG_MESSAGE, DEFAULT_BAUD_RATE);
+                furi_delay_ms(33);
+                furi_hal_cdc_send(UART0_TO_CDC_IF_NUM, buf, length);
+                furi_hal_serial_tx_non_blocking(instance->serial_handle, '\r');
+                furi_hal_serial_tx_non_blocking(instance->serial_handle, '\n');
+            }
         }
 
         if(events & WorkerEventCdcDisconnect) {
@@ -190,9 +205,13 @@ static int32_t uart0_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcConfig) {
-            UART0_TO_CDC_LOG("CDC config changed");
-            furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
-            UART0_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
+            if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+                UART0_TO_CDC_LOG("CDC config changed");
+                furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
+                UART0_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
+            } else {
+                UART0_TO_CDC_LOG("CDC config changed, but custom baudrate is disabled");
+            }
         }
 
         if(events & WorkerEventStop) break;
@@ -264,14 +283,16 @@ static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
     furi_hal_serial_set_callback(instance->serial_handle, uart0_to_cdc_tx_complete_irq_cb, uart0_to_cdc_on_irq_cb, instance);
     furi_hal_serial_async_rx_start(instance->serial_handle, true);
 
+    instance->settings = furi_record_open(RECORD_SETTINGS);
+
     return instance;
 }
 
 void uart0_to_cdc_app_free(Uart0ToCdcApp* instance) {
     furi_assert(instance);
 
+    furi_record_close(RECORD_SETTINGS);
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
-
     furi_hal_serial_async_rx_stop(instance->serial_handle);
     furi_hal_serial_deinit(instance->serial_handle);
     furi_hal_serial_control_release(instance->serial_handle);

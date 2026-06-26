@@ -13,8 +13,10 @@ extern int32_t pio_debug_rx_to_cdc_app(void* p);
 
 // applications
 extern int32_t cli_on_system_start(void* p);
+extern int32_t settings_app(void* p);
 
 // CLI commands
+extern void settings_cli(PipeSide* pipe, FuriString* args, void* context);
 
 const FlipperInternalApplication FLIPPER_SERVICES[] = {
     {
@@ -77,6 +79,13 @@ const size_t FLIPPER_APPS_COUNT = COUNT_OF(FLIPPER_APPS);
 
 const FlipperInternalApplication FLIPPER_AUTORUN_APPS[] = {
     {
+        .app = settings_app,
+        .name = "SettingsApp",
+        .appid = "settings_app",
+        .stack_size = 1024 * 2,
+        .flags = FlipperInternalApplicationFlagDefault,
+    },
+    {
         .app = cli_on_system_start,
         .name = "CliOnSystemStart",
         .appid = "cli_on_system_start",
@@ -87,6 +96,11 @@ const FlipperInternalApplication FLIPPER_AUTORUN_APPS[] = {
 const size_t FLIPPER_AUTORUN_APPS_COUNT = COUNT_OF(FLIPPER_AUTORUN_APPS);
 
 const FlipperInternalCommandApplication FLIPPER_CLI_COMMANDS[] = {
-
+    {
+        .callback = settings_cli,
+        .name = "settings",
+        .stack_size = 1024 * 2,
+        .flags = CliCommandFlagDefault,
+    },
 };
 const size_t FLIPPER_CLI_COMMANDS_COUNT = COUNT_OF(FLIPPER_CLI_COMMANDS);

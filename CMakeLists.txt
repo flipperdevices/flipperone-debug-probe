@@ -66,8 +66,8 @@ file(GLOB_RECURSE SOURCES
     "targets/${TARGET_HARDWARE}/furi_bsp/*.c*"
     "lib/tusb/*.c*"
     "applications/*.c"
-    "applications/services/*.c"
     "applications/main/*.c"
+    "applications/services/*.c"
     "targets/${TARGET_HARDWARE}/src/*.c*"
 )
 
@@ -103,6 +103,7 @@ pico_enable_stdio_usb(${PROJECT_NAME} 0)
 # Add the standard include files to the build
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/applications
+    ${CMAKE_CURRENT_LIST_DIR}/applications/main
     ${CMAKE_CURRENT_LIST_DIR}/applications/services
     ${CMAKE_CURRENT_LIST_DIR}/lib/toolbox
     ${CMAKE_CURRENT_LIST_DIR}/lib/corelibs/lib/furi

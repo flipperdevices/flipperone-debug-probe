@@ -3,14 +3,17 @@
 #include <furi_hal.h>
 #include <furi_hal_usb_cdc.h>
 #include <uart_pio_rx.h>
+#include <settings/settings.h>
+#include <cli/cli_ansi.h>
 
 #define TAG "PioDebugRx"
 
 #define PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX (CFG_TUD_CDC_RX_BUFSIZE)
 #define PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX (CFG_TUD_CDC_RX_BUFSIZE - 1) //Todo: 2 txdone, when sending a full 64-byte packet
-#define PIO_DEBUG_RX_TO_CDC_IF_NUM  2
+#define PIO_DEBUG_RX_TO_CDC_IF_NUM     2
 
-#define DEFAULT_BAUD_RATE 230400
+#define DEFAULT_BAUD_RATE   (1500000UL)
+#define DEFAULT_LOG_MESSAGE "Flipper One MCU logs, fixed baud rate:"
 
 //#define PIO_DEBUG_RX_TO_CDC_DEBUG
 
@@ -40,6 +43,7 @@ typedef struct {
     uint8_t data_buffer[PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX];
     bool connected;
     uint32_t baudrate;
+    Settings* settings;
 } PioDebugRxToCdcApp;
 
 typedef enum {
@@ -134,6 +138,14 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcConnect) {
             PIO_DEBUG_RX_TO_CDC_LOG("CDC connected");
             instance->connected = true;
+            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+                PIO_DEBUG_RX_TO_CDC_LOG("CDC connected, send default log message");
+                uint8_t buf[128];
+                int32_t length =
+                    snprintf((char*)buf, sizeof(buf), ANSI_BG_WHITE ANSI_FG_BR_BLACK "\r\n%s %ld\r\n" ANSI_RESET, DEFAULT_LOG_MESSAGE, DEFAULT_BAUD_RATE);
+                furi_delay_ms(33);
+                furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, buf, length);
+            }
         }
 
         if(events & WorkerEventCdcDisconnect) {
@@ -182,12 +194,14 @@ static PioDebugRxToCdcApp* pio_debug_rx_to_cdc_app_alloc(void) {
 
     uart_pio_rx_set_callback(pio_debug_rx_isr_callback, instance);
 
+    instance->settings = furi_record_open(RECORD_SETTINGS);
+
     return instance;
 }
 
 void pio_debug_rx_to_cdc_app_free(PioDebugRxToCdcApp* instance) {
     furi_assert(instance);
-
+    furi_record_close(RECORD_SETTINGS);
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
     uart_pio_rx_deinit();
     free(instance);
