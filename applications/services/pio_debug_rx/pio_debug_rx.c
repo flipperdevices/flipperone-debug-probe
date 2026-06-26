@@ -141,7 +141,8 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
             if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
                 PIO_DEBUG_RX_TO_CDC_LOG("CDC connected, send default log message");
                 uint8_t buf[128];
-                int32_t length = snprintf((char*)buf, sizeof(buf), ANSI_BG_WHITE ANSI_FG_BR_BLACK "\r\n%s %ld\r\n" ANSI_RESET, DEFAULT_LOG_MESSAGE, DEFAULT_BAUD_RATE);
+                int32_t length =
+                    snprintf((char*)buf, sizeof(buf), ANSI_BG_WHITE ANSI_FG_BR_BLACK "\r\n%s %ld\r\n" ANSI_RESET, DEFAULT_LOG_MESSAGE, DEFAULT_BAUD_RATE);
                 furi_delay_ms(33);
                 furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, buf, length);
             }
