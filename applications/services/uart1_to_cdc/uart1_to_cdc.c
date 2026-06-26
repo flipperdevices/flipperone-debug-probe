@@ -3,6 +3,7 @@
 #include <furi_hal.h>
 #include <furi_hal_usb_cdc.h>
 #include <settings/settings.h>
+#include <cli/cli_ansi.h>
 
 #define TAG "Uart1ToCdc"
 
@@ -15,6 +16,8 @@
 #define DEFAULT_DATA_BITS FuriHalSerialConfigDataBits8
 #define DEFAULT_PARITY    FuriHalSerialConfigParityNone
 #define DEFAULT_STOP_BITS FuriHalSerialConfigStopBits_1
+
+#define DEFAULT_LOG_MESSAGE "Flipper One MCU CLI, fixed baud rate:"
 
 // #define UART1_TO_CDC_DEBUG
 
@@ -177,6 +180,15 @@ static int32_t uart1_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcConnect) {
             UART1_TO_CDC_LOG("CDC connected");
             instance->connected = true;
+            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+                UART1_TO_CDC_LOG("CDC connected, send default log message");
+                uint8_t buf[128];
+                int32_t length = snprintf((char*)buf, sizeof(buf), ANSI_BG_WHITE ANSI_FG_BR_BLACK "\r\n%s %ld\r\n" ANSI_RESET, DEFAULT_LOG_MESSAGE, DEFAULT_BAUD_RATE);
+                furi_delay_ms(33);
+                furi_hal_cdc_send(UART1_TO_CDC_IF_NUM, buf, length);
+                furi_hal_serial_tx_non_blocking(instance->serial_handle, '\r');
+                furi_hal_serial_tx_non_blocking(instance->serial_handle, '\n');
+            }
         }
 
         if(events & WorkerEventCdcDisconnect) {
