@@ -34,7 +34,7 @@ static void* callback_context;
 #define RD_SLOT_PTR(x) &(x.data[RD_IDX(x)][0])
 
 bool buffer_full(buffer_t* buffer) {
-    return ((buffer->wptr + 1) % DAP_PACKET_COUNT == buffer->rptr);
+    return ((buffer->wptr + 1) % DAP_PACKET_COUNT == buffer->rptr % DAP_PACKET_COUNT);
 }
 
 bool buffer_empty(buffer_t* buffer) {
