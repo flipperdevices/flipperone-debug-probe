@@ -179,8 +179,7 @@ static int32_t uart1_to_cdc_worker(void* context) {
 
         if(events & WorkerEventCdcConnect) {
             UART1_TO_CDC_LOG("CDC connected");
-            instance->connected = true;
-            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings) && !instance->connected) {
                 UART1_TO_CDC_LOG("CDC connected, send default log message");
                 uint8_t buf[128];
                 int32_t length =
@@ -189,6 +188,7 @@ static int32_t uart1_to_cdc_worker(void* context) {
                 furi_hal_cdc_send(UART1_TO_CDC_IF_NUM, buf, length);
                 furi_hal_serial_tx_non_blocking(instance->serial_handle, CliKeyETX); // send Ctrl+C to MCU CLI
             }
+            instance->connected = true;
         }
 
         if(events & WorkerEventCdcDisconnect) {

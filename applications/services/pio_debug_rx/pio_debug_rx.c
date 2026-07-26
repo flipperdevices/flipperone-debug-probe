@@ -137,8 +137,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
 
         if(events & WorkerEventCdcConnect) {
             PIO_DEBUG_RX_TO_CDC_LOG("CDC connected");
-            instance->connected = true;
-            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+            if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings) && !instance->connected) {
                 PIO_DEBUG_RX_TO_CDC_LOG("CDC connected, send default log message");
                 uint8_t buf[128];
                 int32_t length =
@@ -146,6 +145,7 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
                 furi_delay_ms(33);
                 furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, buf, length);
             }
+            instance->connected = true;
         }
 
         if(events & WorkerEventCdcDisconnect) {
