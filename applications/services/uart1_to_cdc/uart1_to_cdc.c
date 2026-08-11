@@ -115,7 +115,7 @@ static int32_t uart1_to_cdc_worker(void* context) {
 
     furi_hal_cdc_set_callbacks(UART1_TO_CDC_IF_NUM, &uart1_to_cdc_cb, instance);
     size_t missed_rx = 0;
-    size_t length = 0;
+    int32_t length = 0;
     while(1) {
         uint32_t events = furi_thread_flags_wait(WORKER_EVENTS_MASK, FuriFlagWaitAny, FuriWaitForever);
         if(events & WorkerEventUartTxComplete) {
