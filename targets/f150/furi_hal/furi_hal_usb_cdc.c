@@ -110,10 +110,9 @@ void furi_hal_cdc_set_callbacks(uint8_t if_num, CdcCallbacks* cb, void* context)
 }
 
 cdc_line_coding_t* furi_hal_cdc_get_port_settings(uint8_t if_num) {
-    //static struct usb_cdc_line_coding line_coding;
-    cdc_line_coding_t* line_coding = NULL;
-    tud_cdc_n_get_line_coding(if_num, line_coding);
-    return line_coding;
+    static cdc_line_coding_t line_coding;
+    tud_cdc_n_get_line_coding(if_num, &line_coding);
+    return &line_coding;
 }
 
 uint8_t furi_hal_cdc_get_ctrl_line_state(uint8_t if_num) {
