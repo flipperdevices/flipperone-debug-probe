@@ -92,6 +92,18 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     #PICO_USE_SW_SPIN_LOCKS=0
 )
 
+# Route newlib's reentrant allocators (_malloc_r and friends) to the Furi heap.
+# pico_malloc only wraps malloc/free/calloc/realloc. Newlib internal users
+# (stdio buffering via __smakebuf_r, %f formatting via _dtoa_r, strdup, fopen,
+# etc.) go through the _r variants, which otherwise fall back to _sbrk over
+# the .heap section that overlaps the start of the Furi heap. memmgr.c already
+# provides __wrap__malloc_r/__wrap__free_r/__wrap__calloc_r/__wrap__realloc_r.
+target_link_options(${PROJECT_NAME} PRIVATE
+    "LINKER:--wrap=_malloc_r"
+    "LINKER:--wrap=_free_r"
+    "LINKER:--wrap=_calloc_r"
+    "LINKER:--wrap=_realloc_r"
+)
 
 pico_set_program_name(${PROJECT_NAME} "${PROJECT_NAME}")
 pico_set_program_version(${PROJECT_NAME} "0.1")
