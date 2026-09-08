@@ -8,6 +8,7 @@
 #include <furi_bsp.h>
 #include <furi_hal_clock.h>
 #include <furi_hal_otp.h>
+#include <pico/stdio.h>
 
 void cli_command_uptime(PipeSide* pipe, FuriString* args, void* context) {
     UNUSED(pipe);
@@ -141,7 +142,7 @@ void cli_command_top(PipeSide* pipe, FuriString* args, void* context) {
         }
 
         printf(ANSI_ERASE_DISPLAY(ANSI_ERASE_FROM_CURSOR_TO_END));
-        fflush(stdout);
+        stdio_flush();
 
         if(interval > 0) {
             furi_delay_ms(interval);
