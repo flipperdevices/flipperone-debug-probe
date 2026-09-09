@@ -191,7 +191,6 @@ FuriHalClockSource cli_clock_sources[] = {
     FuriHalClockSourcePeri,
     FuriHalClockSourceHstx,
     FuriHalClockSourceOtp2fc,
-    FuriHalClockSourceMax,
 };
 
 static void cli_command_clock_out_help(PipeSide* pipe, FuriString* args, void* context) {
