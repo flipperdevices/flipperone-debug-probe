@@ -104,7 +104,9 @@ static void uart0_to_cdc_control_line(void* context, uint8_t state) {
 
 static void uart0_to_cdc_config(void* context, cdc_line_coding_t* config) {
     Uart0ToCdcApp* instance = context;
-    instance->baudrate = config->bit_rate;
+    if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+        instance->baudrate = config->bit_rate;
+    }
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventCdcConfig);
 }
 
