@@ -243,6 +243,7 @@ static void cli_vcp_event_happened(FuriEventLoopObject* object, void* context) {
             pipe_detach_from_event_loop(cli_vcp->own_pipe);
             pipe_free(cli_vcp->own_pipe);
             cli_vcp->own_pipe = NULL;
+            cli_vcp->is_currently_transmitting = false;
 
             // wait for shell to stop
             cli_shell_join(cli_vcp->shell);
@@ -273,6 +274,8 @@ static void cli_vcp_event_happened(FuriEventLoopObject* object, void* context) {
             cli_vcp->shell = cli_shell_alloc(cli_main_motd, NULL, cli_vcp->shell_pipe, cli_vcp->main_registry, NULL);
             cli_shell_set_prompt(cli_vcp->shell, CLI_VCP_SHELL_PROMPT);
             cli_shell_start(cli_vcp->shell);
+            // Rx may have arrived before Connected created the pipe.
+            cli_vcp_maybe_receive_data(cli_vcp);
         }
     }
 }
