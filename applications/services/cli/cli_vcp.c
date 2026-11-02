@@ -252,6 +252,7 @@ static void cli_vcp_event_happened(FuriEventLoopObject* object, void* context) {
         if(!cli_vcp->is_connected) {
             FURI_LOG_D(TAG, "Connected");
             cli_vcp->is_connected = true;
+            cli_vcp->is_currently_transmitting = false;
             cli_vcp->main_registry = furi_record_open(RECORD_CLI);
             // start shell thread
             PipeSideBundle bundle = pipe_alloc(VCP_BUF_SIZE, 1);
