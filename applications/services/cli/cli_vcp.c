@@ -85,11 +85,6 @@ static void cli_vcp_maybe_send_data(CliVcp* cli_vcp) {
         CLI_VCP_DEBUG(TAG, "cdc_send length=%zu", length);
         cli_vcp->is_currently_transmitting = true;
         if(!furi_hal_cdc_send(VCP_IF_NUM, buf, length)) {
-            // furi_hal_cdc_send() gave up via its own internal timeout - the host vanished
-            // mid-transfer (e.g. during a reboot) and tud_cdc_tx_complete_cb() for this
-            // transfer will never arrive. Don't wait for it forever: drop back to idle
-            // ourselves and retry with whatever is pending now, instead of being wedged
-            // until the cable is physically replugged.
             cli_vcp->is_currently_transmitting = pipe_bytes_available(cli_vcp->own_pipe) > 0;
             if(cli_vcp->is_currently_transmitting) {
                 cli_vcp_signal_event(cli_vcp, CliVcpEventTx);

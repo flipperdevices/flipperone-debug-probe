@@ -296,7 +296,7 @@ static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
 
     instance->baudrate = DEFAULT_BAUD_RATE;
     instance->thread = furi_thread_get_current_id();
-    // Serial is acquired/initialized lazily on CDC connect and released on disconnect
+
     instance->serial_handle = NULL;
     instance->connected = false;
 
