@@ -61,6 +61,13 @@ struct CliVcp {
 // Data copying
 // ============
 
+static void cli_vcp_signal_event(CliVcp* cli_vcp, CliVcpEvent event) {
+    uint32_t ret = furi_event_flag_set(cli_vcp->event_flag, event);
+    if((ret & FuriFlagError)) {
+        FURI_LOG_E(TAG, "Failed to set event flag, error code: 0x%08lX", ret);
+    }
+}
+
 /**
  * Called in the following cases:
  *   - previous transfer has finished;
@@ -71,13 +78,25 @@ static void cli_vcp_maybe_send_data(CliVcp* cli_vcp) {
 
     size_t length = pipe_bytes_available(cli_vcp->own_pipe);
     if(length > 0) {
-        cli_vcp->is_currently_transmitting = true;
         uint8_t buf[USB_CDC_PKT_LEN];
         size_t to_receive_from_pipe = MIN(sizeof(buf), pipe_bytes_available(cli_vcp->own_pipe));
         length = pipe_receive(cli_vcp->own_pipe, buf, to_receive_from_pipe);
         furi_check(length == to_receive_from_pipe);
         CLI_VCP_DEBUG(TAG, "cdc_send length=%zu", length);
-        furi_hal_cdc_send(VCP_IF_NUM, buf, length);
+        cli_vcp->is_currently_transmitting = true;
+        if(!furi_hal_cdc_send(VCP_IF_NUM, buf, length)) {
+            // furi_hal_cdc_send() gave up via its own internal timeout - the host vanished
+            // mid-transfer (e.g. during a reboot) and tud_cdc_tx_complete_cb() for this
+            // transfer will never arrive. Don't wait for it forever: drop back to idle
+            // ourselves and retry with whatever is pending now, instead of being wedged
+            // until the cable is physically replugged.
+            cli_vcp->is_currently_transmitting = pipe_bytes_available(cli_vcp->own_pipe) > 0;
+            if(cli_vcp->is_currently_transmitting) {
+                cli_vcp_signal_event(cli_vcp, CliVcpEventTx);
+            }
+        }
+        // else: a real transfer is in flight - wait for tud_cdc_tx_complete_cb() to signal
+        // CliVcpEventTxDone, as before.
     } else {
         cli_vcp->is_currently_transmitting = false;
     }
@@ -103,13 +122,6 @@ static void cli_vcp_maybe_receive_data(CliVcp* cli_vcp) {
 // =============
 // CDC callbacks
 // =============
-
-static void cli_vcp_signal_event(CliVcp* cli_vcp, CliVcpEvent event) {
-    uint32_t ret = furi_event_flag_set(cli_vcp->event_flag, event);
-    if((ret & FuriFlagError)) {
-        FURI_LOG_E(TAG, "Failed to set event flag, error code: 0x%08lX", ret);
-    }
-}
 
 static void cli_vcp_cdc_tx_done(void* context) {
     CliVcp* cli_vcp = context;

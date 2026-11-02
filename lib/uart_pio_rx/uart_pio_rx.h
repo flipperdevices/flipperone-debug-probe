@@ -16,6 +16,7 @@ void uart_pio_rx_set_baud_rate(uint32_t baud_rate);
 uint32_t uart_pio_rx_get_baud_rate(void);
 void uart_pio_rx_set_callback(UartPioRxCallback callback, void* context);
 size_t uart_pio_rx_read(uint8_t* buffer, size_t size, uint32_t timeout);
+size_t uart_pio_rx_bytes_available(void);
 #ifdef __cplusplus
 }
 #endif

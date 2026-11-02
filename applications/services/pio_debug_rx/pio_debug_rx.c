@@ -134,13 +134,16 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcTx) {
             length = instance->pio_active ? uart_pio_rx_read(instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX, 0) : 0;
             PIO_DEBUG_RX_TO_CDC_LOG("UART Tx %d", length);
-            if(length > 0) {
-                if(instance->connected) {
-                    instance->cdc_tx_idle = false;
-                    furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, length);
+            if(length > 0 && instance->connected) {
+                instance->cdc_tx_idle = false;
+                if(!furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, length)) {
+                    if(instance->pio_active && uart_pio_rx_bytes_available() > 0) {
+                        furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventCdcTx);
+                    } else {
+                        instance->cdc_tx_idle = true;
+                    }
                 }
             } else {
-                //furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, NULL, 0);
                 instance->cdc_tx_idle = true;
             }
         }

@@ -119,16 +119,17 @@ uint8_t furi_hal_cdc_get_ctrl_line_state(uint8_t if_num) {
     return tud_cdc_n_get_line_state(if_num);
 }
 
-void furi_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len) {
+bool furi_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len) {
     FuriStatus status = furi_mutex_acquire(furi_hal_usb_cdc_mutex, FURI_HAL_USB_CDC_DEADLOCK_TIMEOUT_MS);
 
     if(status == FuriStatusErrorTimeout) {
         FURI_LOG_E(TAG, "USB CDC DEADLOCK timeout");
-        return;
+        return false;
     }
 
     furi_check(status == FuriStatusOk);
 
+    bool completed = true;
     static uint64_t last_avail_time;
     if(tud_ready()) {
         for(int i = 0; i < len;) {
@@ -144,6 +145,7 @@ void furi_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len) {
                 tud_cdc_n_write_flush(if_num);
                 if(!tud_ready() || (!tud_cdc_n_write_available(if_num) && time_us_64() > last_avail_time + FURI_HAL_USB_CDC_TIMEOUT_US)) {
                     FURI_LOG_E(TAG, "USB CDC send timeout");
+                    completed = false;
                     break;
                 }
             }
@@ -151,9 +153,11 @@ void furi_hal_cdc_send(uint8_t if_num, uint8_t* buf, uint16_t len) {
     } else {
         // reset our timeout
         last_avail_time = 0;
+        completed = false;
     }
 
     furi_check(furi_mutex_release(furi_hal_usb_cdc_mutex) == FuriStatusOk);
+    return completed;
 }
 
 int32_t furi_hal_cdc_receive(uint8_t if_num, uint8_t* buf, uint16_t length) {
