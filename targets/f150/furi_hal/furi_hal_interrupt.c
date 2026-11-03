@@ -96,7 +96,7 @@ __attribute__((always_inline)) static inline void furi_hal_interrupt_call(FuriHa
 // }
 
 void furi_hal_interrupt_init() {
-    /* Set PendSV to lowest logical priority (level 15 -> hardware 0xF0).
+/* Set PendSV to lowest logical priority (level 15 -> hardware 0xF0).
      * With 4 NVIC bits, NVIC_EncodePriority(0, 15, 0) = 15, then
      * NVIC_SetPriority shifts it to 0xF0. */
     NVIC_SetPriority(PendSV_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), configLIBRARY_LOWEST_INTERRUPT_PRIORITY, 0));
@@ -317,7 +317,7 @@ void furi_hal_interrupt_set_isr_ex(FuriHalInterruptId index, FuriHalInterruptPri
 
         //Todo: check the implementation
         irq_set_enabled(furi_hal_interrupt_irqn[index], false);
-        irq_set_exclusive_handler(furi_hal_interrupt_irqn[index], NULL);
+        irq_remove_handler(furi_hal_interrupt_irqn[index], furi_hal_interrupt_isr_handler[index]);
         // furi_hal_interrupt_disable(index);
         // furi_hal_interrupt_clear_pending(index);
     }
