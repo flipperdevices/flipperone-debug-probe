@@ -42,6 +42,7 @@ typedef struct {
     bool cdc_tx_idle;
     uint8_t data_buffer[PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX];
     bool connected;
+    bool pio_active;
     uint32_t baudrate;
     Settings* settings;
 } PioDebugRxToCdcApp;
@@ -95,8 +96,17 @@ static void pio_debug_rx_to_cdc_control_line(void* context, uint8_t state) {
 
 static void pio_debug_rx_to_cdc_config(void* context, cdc_line_coding_t* config) {
     PioDebugRxToCdcApp* instance = context;
-    instance->baudrate = config->bit_rate;
+    if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+        instance->baudrate = config->bit_rate;
+    }
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventCdcConfig);
+}
+
+static void pio_debug_rx_isr_callback(void* context) {
+    PioDebugRxToCdcApp* instance = context;
+    WorkerEventFlags flag = 0;
+    flag |= WorkerEventUartRx;
+    furi_thread_flags_set(furi_thread_get_id(instance->thread), flag);
 }
 
 static int32_t pio_debug_rx_to_cdc_worker(void* context) {
@@ -122,21 +132,32 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcTx) {
-            length = uart_pio_rx_read(instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX, 0);
+            length = instance->pio_active ? uart_pio_rx_read(instance->data_buffer, PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX, 0) : 0;
             PIO_DEBUG_RX_TO_CDC_LOG("UART Tx %d", length);
-            if(length > 0) {
-                if(instance->connected) {
-                    instance->cdc_tx_idle = false;
-                    furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, length);
+            if(length > 0 && instance->connected) {
+                instance->cdc_tx_idle = false;
+                if(!furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, instance->data_buffer, length)) {
+                    if(instance->pio_active && uart_pio_rx_bytes_available() > 0) {
+                        furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventCdcTx);
+                    } else {
+                        instance->cdc_tx_idle = true;
+                    }
                 }
             } else {
-                //furi_hal_cdc_send(PIO_DEBUG_RX_TO_CDC_IF_NUM, NULL, 0);
                 instance->cdc_tx_idle = true;
             }
         }
 
         if(events & WorkerEventCdcConnect) {
             PIO_DEBUG_RX_TO_CDC_LOG("CDC connected");
+
+            if(!instance->pio_active) {
+                uart_pio_rx_init(instance->baudrate, &gpio_mcu_debug_rx);
+                instance->cdc_tx_idle = true;
+                uart_pio_rx_set_callback(pio_debug_rx_isr_callback, instance);
+                instance->pio_active = true;
+            }
+
             if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings) && !instance->connected) {
                 PIO_DEBUG_RX_TO_CDC_LOG("CDC connected, send default log message");
                 uint8_t buf[128];
@@ -151,6 +172,10 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcDisconnect) {
             PIO_DEBUG_RX_TO_CDC_LOG("CDC disconnected");
             instance->connected = false;
+            if(instance->pio_active) {
+                uart_pio_rx_deinit();
+                instance->pio_active = false;
+            }
         }
 
         if(events & WorkerEventError) {
@@ -173,26 +198,15 @@ static int32_t pio_debug_rx_to_cdc_worker(void* context) {
     return 0;
 }
 
-static void pio_debug_rx_isr_callback(void* context) {
-    PioDebugRxToCdcApp* instance = context;
-    WorkerEventFlags flag = 0;
-    flag |= WorkerEventUartRx;
-    furi_thread_flags_set(furi_thread_get_id(instance->thread), flag);
-}
-
 static PioDebugRxToCdcApp* pio_debug_rx_to_cdc_app_alloc(void) {
     furi_check(PIO_DEBUG_RX_TO_CDC_PKT_LEN_RX >= PIO_DEBUG_RX_TO_CDC_PKT_LEN_TX);
     PioDebugRxToCdcApp* instance = malloc(sizeof(PioDebugRxToCdcApp));
 
-    // Enable uart listener
     instance->baudrate = DEFAULT_BAUD_RATE;
-
     instance->thread = furi_thread_get_current_id();
-
-    uart_pio_rx_init(instance->baudrate, &gpio_mcu_debug_rx);
-    instance->cdc_tx_idle = true;
-
-    uart_pio_rx_set_callback(pio_debug_rx_isr_callback, instance);
+    // PIO RX is started lazily on CDC connect and stopped on disconnect
+    instance->pio_active = false;
+    instance->connected = false;
 
     instance->settings = furi_record_open(RECORD_SETTINGS);
 
@@ -203,7 +217,9 @@ void pio_debug_rx_to_cdc_app_free(PioDebugRxToCdcApp* instance) {
     furi_assert(instance);
     furi_record_close(RECORD_SETTINGS);
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
-    uart_pio_rx_deinit();
+    if(instance->pio_active) {
+        uart_pio_rx_deinit();
+    }
     free(instance);
 }
 

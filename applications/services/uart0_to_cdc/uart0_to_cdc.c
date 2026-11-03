@@ -110,6 +110,44 @@ static void uart0_to_cdc_config(void* context, cdc_line_coding_t* config) {
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventCdcConfig);
 }
 
+static void uart0_to_cdc_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxEvent event, void* context) {
+    furi_assert(context);
+    UNUSED(handle);
+    Uart0ToCdcApp* instance = context;
+    WorkerEventFlags flag = 0;
+
+    uint8_t data[UART0_TO_CDC_PKT_LEN_TX];
+    size_t length = 0;
+    size_t buf_size_rx = 0;
+    if(event & (FuriHalSerialRxEventData | FuriHalSerialRxEventIdle)) {
+        length = furi_hal_serial_rx_data_non_blocking(handle, data, UART0_TO_CDC_PKT_LEN_TX);
+        if(instance->connected) {
+            buf_size_rx = furi_stream_buffer_send(instance->tx_stream, &data, length, 0);
+            if(buf_size_rx != length) {
+                flag |= WorkerEventError;
+            } else {
+                flag |= WorkerEventUartRx;
+            }
+        }
+    }
+    //error detected
+    if(event & (FuriHalSerialRxEventFrameError | FuriHalSerialRxEventBreakError | FuriHalSerialRxEventOverrunError | FuriHalSerialRxEventParityError)) {
+        flag |= WorkerEventError;
+    }
+
+    furi_thread_flags_set(furi_thread_get_id(instance->thread), flag);
+}
+
+static void uart0_to_cdc_tx_complete_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialTxEvent event, void* context) {
+    UNUSED(handle);
+    WorkerEventFlags flag = 0;
+    Uart0ToCdcApp* app = context;
+    if(event & FuriHalSerialTxEventComplete) {
+        flag |= (WorkerEventUartTxComplete);
+    }
+    furi_thread_flags_set(furi_thread_get_id(app->thread), flag);
+}
+
 static int32_t uart0_to_cdc_worker(void* context) {
     furi_assert(context);
     Uart0ToCdcApp* instance = context;
@@ -155,13 +193,16 @@ static int32_t uart0_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcTx) {
             length = furi_stream_buffer_receive(instance->tx_stream, instance->data_buffer, UART0_TO_CDC_PKT_LEN_TX, 0);
             UART0_TO_CDC_LOG("UART Tx %d", length);
-            if(length > 0) {
-                if(instance->connected) {
-                    instance->cdc_tx_idle = false;
-                    furi_hal_cdc_send(UART0_TO_CDC_IF_NUM, instance->data_buffer, length);
+            if(length > 0 && instance->connected) {
+                instance->cdc_tx_idle = false;
+                if(!furi_hal_cdc_send(UART0_TO_CDC_IF_NUM, instance->data_buffer, length)) {
+                    if(furi_stream_buffer_bytes_available(instance->tx_stream) > 0) {
+                        furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventCdcTx);
+                    } else {
+                        instance->cdc_tx_idle = true;
+                    }
                 }
             } else {
-                //furi_hal_cdc_send(UART0_TO_CDC_IF_NUM, NULL, 0);
                 instance->cdc_tx_idle = true;
             }
         }
@@ -169,7 +210,7 @@ static int32_t uart0_to_cdc_worker(void* context) {
         if(events & WorkerEventUartTx) {
             UART0_TO_CDC_LOG("UART Tx start");
             uint8_t data;
-            while(furi_hal_serial_tx_ready(instance->serial_handle)) {
+            while(instance->serial_handle && furi_hal_serial_tx_ready(instance->serial_handle)) {
                 length = furi_stream_buffer_receive(instance->rx_stream, &data, 1, 0);
                 if(length > 0) {
                     furi_hal_serial_tx_non_blocking(instance->serial_handle, data);
@@ -182,6 +223,21 @@ static int32_t uart0_to_cdc_worker(void* context) {
 
         if(events & WorkerEventCdcConnect) {
             UART0_TO_CDC_LOG("CDC connected");
+
+            if(!instance->serial_handle) {
+                instance->serial_handle = furi_hal_serial_control_acquire(FuriHalSerialIdUart0);
+                furi_check(instance->serial_handle);
+                FuriHalSerialConfigDataBits data_bits = DEFAULT_DATA_BITS;
+                FuriHalSerialConfigParity parity = DEFAULT_PARITY;
+                FuriHalSerialConfigStopBits stop_bits = DEFAULT_STOP_BITS;
+                furi_hal_serial_init(instance->serial_handle, instance->baudrate);
+                furi_hal_serial_set_config(instance->serial_handle, data_bits, parity, stop_bits);
+                instance->cdc_tx_idle = true;
+
+                furi_hal_serial_set_callback(instance->serial_handle, uart0_to_cdc_tx_complete_irq_cb, uart0_to_cdc_on_irq_cb, instance);
+                furi_hal_serial_async_rx_start(instance->serial_handle, true);
+            }
+
             if(!settings_app_is_uart_custom_baudrate_enabled(instance->settings) && !instance->connected) {
                 UART0_TO_CDC_LOG("CDC connected, send default log message");
                 uint8_t buf[128];
@@ -197,6 +253,13 @@ static int32_t uart0_to_cdc_worker(void* context) {
         if(events & WorkerEventCdcDisconnect) {
             UART0_TO_CDC_LOG("CDC disconnected");
             instance->connected = false;
+            if(instance->serial_handle) {
+                furi_hal_serial_async_rx_stop(instance->serial_handle);
+                furi_hal_serial_set_callback(instance->serial_handle, NULL, NULL, NULL);
+                furi_hal_serial_deinit(instance->serial_handle);
+                furi_hal_serial_control_release(instance->serial_handle);
+                instance->serial_handle = NULL;
+            }
             furi_stream_buffer_reset(instance->tx_stream);
             furi_stream_buffer_reset(instance->rx_stream);
         }
@@ -206,7 +269,9 @@ static int32_t uart0_to_cdc_worker(void* context) {
         }
 
         if(events & WorkerEventCdcConfig) {
-            if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
+            if(!instance->serial_handle) {
+                UART0_TO_CDC_LOG("CDC config changed, but serial is not active");
+            } else if(settings_app_is_uart_custom_baudrate_enabled(instance->settings)) {
                 UART0_TO_CDC_LOG("CDC config changed");
                 furi_hal_serial_set_baud_rate(instance->serial_handle, instance->baudrate);
                 UART0_TO_CDC_LOG("CDC config baud rate %ld", instance->baudrate);
@@ -223,66 +288,17 @@ static int32_t uart0_to_cdc_worker(void* context) {
     return 0;
 }
 
-static void uart0_to_cdc_on_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialRxEvent event, void* context) {
-    furi_assert(context);
-    UNUSED(handle);
-    Uart0ToCdcApp* instance = context;
-    WorkerEventFlags flag = 0;
-
-    uint8_t data[UART0_TO_CDC_PKT_LEN_TX];
-    size_t length = 0;
-    size_t buf_size_rx = 0;
-    if(event & (FuriHalSerialRxEventData | FuriHalSerialRxEventIdle)) {
-        length = furi_hal_serial_rx_data_non_blocking(handle, data, UART0_TO_CDC_PKT_LEN_TX);
-        if(instance->connected) {
-            buf_size_rx = furi_stream_buffer_send(instance->tx_stream, &data, length, 0);
-            if(buf_size_rx != length) {
-                flag |= WorkerEventError;
-            } else {
-                flag |= WorkerEventUartRx;
-            }
-        }
-    }
-    //error detected
-    if(event & (FuriHalSerialRxEventFrameError | FuriHalSerialRxEventBreakError | FuriHalSerialRxEventOverrunError | FuriHalSerialRxEventParityError)) {
-        flag |= WorkerEventError;
-    }
-
-    furi_thread_flags_set(furi_thread_get_id(instance->thread), flag);
-}
-
-static void uart0_to_cdc_tx_complete_irq_cb(FuriHalSerialHandle* handle, FuriHalSerialTxEvent event, void* context) {
-    UNUSED(handle);
-    WorkerEventFlags flag = 0;
-    Uart0ToCdcApp* app = context;
-    if(event & FuriHalSerialTxEventComplete) {
-        flag |= (WorkerEventUartTxComplete);
-    }
-    furi_thread_flags_set(furi_thread_get_id(app->thread), flag);
-}
-
 static Uart0ToCdcApp* uart0_to_cdc_app_alloc(void) {
     furi_check(UART0_TO_CDC_PKT_LEN_RX >= UART0_TO_CDC_PKT_LEN_TX);
     Uart0ToCdcApp* instance = malloc(sizeof(Uart0ToCdcApp));
     instance->rx_stream = furi_stream_buffer_alloc(DEFAULT_BUF_SIZE, 1);
     instance->tx_stream = furi_stream_buffer_alloc(DEFAULT_BUF_SIZE, 1);
 
-    // Enable uart listener
     instance->baudrate = DEFAULT_BAUD_RATE;
-    FuriHalSerialConfigDataBits data_bits = DEFAULT_DATA_BITS;
-    FuriHalSerialConfigParity parity = DEFAULT_PARITY;
-    FuriHalSerialConfigStopBits stop_bits = DEFAULT_STOP_BITS;
-
     instance->thread = furi_thread_get_current_id();
 
-    instance->serial_handle = furi_hal_serial_control_acquire(FuriHalSerialIdUart0);
-    furi_check(instance->serial_handle);
-    furi_hal_serial_init(instance->serial_handle, instance->baudrate);
-    furi_hal_serial_set_config(instance->serial_handle, data_bits, parity, stop_bits);
-    instance->cdc_tx_idle = true;
-
-    furi_hal_serial_set_callback(instance->serial_handle, uart0_to_cdc_tx_complete_irq_cb, uart0_to_cdc_on_irq_cb, instance);
-    furi_hal_serial_async_rx_start(instance->serial_handle, true);
+    instance->serial_handle = NULL;
+    instance->connected = false;
 
     instance->settings = furi_record_open(RECORD_SETTINGS);
 
@@ -294,9 +310,11 @@ void uart0_to_cdc_app_free(Uart0ToCdcApp* instance) {
 
     furi_record_close(RECORD_SETTINGS);
     furi_thread_flags_set(furi_thread_get_id(instance->thread), WorkerEventStop);
-    furi_hal_serial_async_rx_stop(instance->serial_handle);
-    furi_hal_serial_deinit(instance->serial_handle);
-    furi_hal_serial_control_release(instance->serial_handle);
+    if(instance->serial_handle) {
+        furi_hal_serial_async_rx_stop(instance->serial_handle);
+        furi_hal_serial_deinit(instance->serial_handle);
+        furi_hal_serial_control_release(instance->serial_handle);
+    }
 
     furi_stream_buffer_free(instance->rx_stream);
     furi_stream_buffer_free(instance->tx_stream);

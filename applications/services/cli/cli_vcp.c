@@ -61,6 +61,13 @@ struct CliVcp {
 // Data copying
 // ============
 
+static void cli_vcp_signal_event(CliVcp* cli_vcp, CliVcpEvent event) {
+    uint32_t ret = furi_event_flag_set(cli_vcp->event_flag, event);
+    if((ret & FuriFlagError)) {
+        FURI_LOG_E(TAG, "Failed to set event flag, error code: 0x%08lX", ret);
+    }
+}
+
 /**
  * Called in the following cases:
  *   - previous transfer has finished;
@@ -71,13 +78,20 @@ static void cli_vcp_maybe_send_data(CliVcp* cli_vcp) {
 
     size_t length = pipe_bytes_available(cli_vcp->own_pipe);
     if(length > 0) {
-        cli_vcp->is_currently_transmitting = true;
         uint8_t buf[USB_CDC_PKT_LEN];
         size_t to_receive_from_pipe = MIN(sizeof(buf), pipe_bytes_available(cli_vcp->own_pipe));
         length = pipe_receive(cli_vcp->own_pipe, buf, to_receive_from_pipe);
         furi_check(length == to_receive_from_pipe);
         CLI_VCP_DEBUG(TAG, "cdc_send length=%zu", length);
-        furi_hal_cdc_send(VCP_IF_NUM, buf, length);
+        cli_vcp->is_currently_transmitting = true;
+        if(!furi_hal_cdc_send(VCP_IF_NUM, buf, length)) {
+            cli_vcp->is_currently_transmitting = pipe_bytes_available(cli_vcp->own_pipe) > 0;
+            if(cli_vcp->is_currently_transmitting) {
+                cli_vcp_signal_event(cli_vcp, CliVcpEventTx);
+            }
+        }
+        // else: a real transfer is in flight - wait for tud_cdc_tx_complete_cb() to signal
+        // CliVcpEventTxDone, as before.
     } else {
         cli_vcp->is_currently_transmitting = false;
     }
@@ -103,13 +117,6 @@ static void cli_vcp_maybe_receive_data(CliVcp* cli_vcp) {
 // =============
 // CDC callbacks
 // =============
-
-static void cli_vcp_signal_event(CliVcp* cli_vcp, CliVcpEvent event) {
-    uint32_t ret = furi_event_flag_set(cli_vcp->event_flag, event);
-    if((ret & FuriFlagError)) {
-        FURI_LOG_E(TAG, "Failed to set event flag, error code: 0x%08lX", ret);
-    }
-}
 
 static void cli_vcp_cdc_tx_done(void* context) {
     CliVcp* cli_vcp = context;
@@ -236,6 +243,7 @@ static void cli_vcp_event_happened(FuriEventLoopObject* object, void* context) {
             pipe_detach_from_event_loop(cli_vcp->own_pipe);
             pipe_free(cli_vcp->own_pipe);
             cli_vcp->own_pipe = NULL;
+            cli_vcp->is_currently_transmitting = false;
 
             // wait for shell to stop
             cli_shell_join(cli_vcp->shell);
@@ -252,6 +260,7 @@ static void cli_vcp_event_happened(FuriEventLoopObject* object, void* context) {
         if(!cli_vcp->is_connected) {
             FURI_LOG_D(TAG, "Connected");
             cli_vcp->is_connected = true;
+            cli_vcp->is_currently_transmitting = false;
             cli_vcp->main_registry = furi_record_open(RECORD_CLI);
             // start shell thread
             PipeSideBundle bundle = pipe_alloc(VCP_BUF_SIZE, 1);
@@ -265,6 +274,8 @@ static void cli_vcp_event_happened(FuriEventLoopObject* object, void* context) {
             cli_vcp->shell = cli_shell_alloc(cli_main_motd, NULL, cli_vcp->shell_pipe, cli_vcp->main_registry, NULL);
             cli_shell_set_prompt(cli_vcp->shell, CLI_VCP_SHELL_PROMPT);
             cli_shell_start(cli_vcp->shell);
+            // Rx may have arrived before Connected created the pipe.
+            cli_vcp_maybe_receive_data(cli_vcp);
         }
     }
 }

@@ -115,3 +115,8 @@ size_t uart_pio_rx_read(uint8_t* buffer, size_t size, uint32_t timeout) {
     furi_check(uart_pio_instance != NULL);
     return furi_stream_buffer_receive(uart_pio_instance->rx_stream, buffer, size, timeout);
 }
+
+size_t uart_pio_rx_bytes_available(void) {
+    furi_check(uart_pio_instance != NULL);
+    return furi_stream_buffer_bytes_available(uart_pio_instance->rx_stream);
+}
