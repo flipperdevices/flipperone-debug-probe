@@ -43,6 +43,7 @@ This information includes:
  - Optional information about a connected Target Device (for Evaluation Boards).
 */
 #include <pico/stdlib.h>
+#include <pico/unique_id.h>
 #include <hardware/clocks.h>
 #include <hardware/gpio.h>
 
@@ -182,8 +183,11 @@ __STATIC_INLINE uint8_t DAP_GetProductString(char* str) {
 \return String length (including terminating NULL character) or 0 (no string).
 */
 __STATIC_INLINE uint8_t DAP_GetSerNumString(char* str) {
-    (void)str;
-    return (0U);
+    // The chip's unique ID. Every probe has the same USB serial number, so this
+    // is what tells probes apart through CMSIS-DAP itself (DAP_Info, ID 0x03).
+    const size_t len = 2 * PICO_UNIQUE_BOARD_ID_SIZE_BYTES + 1;
+    pico_get_unique_board_id_string(str, len);
+    return (uint8_t)len;
 }
 
 /** Get Target Device Vendor string.
