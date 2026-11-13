@@ -74,8 +74,9 @@ void probe_set_swclk_freq(uint freq_khz) {
 void probe_assert_reset(bool state)
 {
 #if defined(PROBE_PIN_RESET)
-    /* Change the direction to out to drive pin to 0 or to in to emulate open drain */
-    gpio_set_dir(PROBE_PIN_RESET, state == 0 ? GPIO_OUT : GPIO_IN);
+    /* Open-drain pin as the HAL configures it (GpioModeOutputOpenDrain): the output
+       enable is inverted, so 0 drives the pin low and 1 releases it */
+    gpio_set_dir(PROBE_PIN_RESET, state);
 #endif
 }
 

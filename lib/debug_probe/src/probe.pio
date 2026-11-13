@@ -74,10 +74,11 @@ public read_cmd:
 static inline void probe_gpio_init()
 {
 #if defined(PROBE_PIN_RESET)
-    // Target reset pin: pull up, input to emulate open drain pin
-    gpio_pull_up(PROBE_PIN_RESET);
-    // gpio_init will leave the pin cleared and set as input
-    gpio_init(PROBE_PIN_RESET);
+    // Target reset pin: the HAL has already set it up as an open-drain output
+    // (furi_hal_resources_init) and the 'gpio' console command shares it, so its
+    // function and overrides are left alone. Only make sure it is released
+    // (the output enable is inverted there: direction 'out' releases the pin).
+    gpio_set_dir(PROBE_PIN_RESET, true);
 #endif
     // Funcsel pins
     pio_gpio_init(pio0, PROBE_PIN_SWCLK);
@@ -90,8 +91,8 @@ static inline void probe_gpio_init()
 static inline void probe_gpio_deinit()
 {
 #if defined(PROBE_PIN_RESET)
-	gpio_deinit(PROBE_PIN_RESET);
-	gpio_disable_pulls(PROBE_PIN_RESET);
+	// Released open drain is High-Z; the pin stays usable from the 'gpio' command
+	gpio_set_dir(PROBE_PIN_RESET, true);
 #endif
 	gpio_deinit(PROBE_PIN_SWCLK);
 	gpio_disable_pulls(PROBE_PIN_SWCLK);
