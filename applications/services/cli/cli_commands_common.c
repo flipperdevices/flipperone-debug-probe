@@ -8,7 +8,70 @@
 #include <furi_bsp.h>
 #include <furi_hal_clock.h>
 #include <furi_hal_otp.h>
+#include <furi_hal_power.h>
 #include <pico/stdio.h>
+
+typedef struct {
+    const char* name;
+    const char* arg_spec;
+    const char* description;
+    bool (*execute)(PipeSide*, FuriString*);
+} PowerCmd;
+
+static bool power_cli_reboot(PipeSide* pipe, FuriString* args) {
+    UNUSED(pipe);
+    UNUSED(args);
+    furi_delay_ms(100);
+    furi_hal_power_reset();
+    return true;
+}
+
+static bool power_cli_boot(PipeSide* pipe, FuriString* args) {
+    UNUSED(pipe);
+    UNUSED(args);
+    furi_hal_power_enter_bootsel();
+    return true;
+}
+
+// Same names as the 'power' command of the Flipper One MCU firmware
+static const PowerCmd power_cmds[] = {
+    {"reboot", "", "Reboot the device", power_cli_reboot},
+    {"boot", "", "Boot MCU to bootloader", power_cli_boot},
+};
+
+static void power_cli_print_usage(void) {
+    printf("Usage:\r\npower <cmd>\r\nCmd list:\r\n");
+    for(size_t i = 0; i < COUNT_OF(power_cmds); i++) {
+        const PowerCmd* c = &power_cmds[i];
+        printf("\t%s %s - %s\r\n", c->name, c->arg_spec, c->description);
+    }
+}
+
+void cli_command_power(PipeSide* pipe, FuriString* args, void* context) {
+    UNUSED(context);
+    FuriString* cmd = furi_string_alloc();
+    bool handled = false;
+
+    if(args_read_string_and_trim(args, cmd)) {
+        const char* cmd_str = furi_string_get_cstr(cmd);
+        for(size_t i = 0; i < COUNT_OF(power_cmds); i++) {
+            const PowerCmd* c = &power_cmds[i];
+            if(strcmp(cmd_str, c->name) == 0) {
+                if(!c->execute(pipe, args)) {
+                    printf("usage: power %s %s\r\n", c->name, c->arg_spec);
+                }
+                handled = true;
+                break;
+            }
+        }
+    }
+
+    if(!handled) {
+        power_cli_print_usage();
+    }
+
+    furi_string_free(cmd);
+}
 
 void cli_command_uptime(PipeSide* pipe, FuriString* args, void* context) {
     UNUSED(pipe);

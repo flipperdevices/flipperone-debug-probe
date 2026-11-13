@@ -5,6 +5,7 @@
 #include <hardware/clocks.h>
 #include <hardware/pll.h>
 #include <pico/platform/cpu_regs.h>
+#include <pico/bootrom.h>
 #include <furi_hal_clock.h>
 #include <pico/time.h>
 
@@ -23,6 +24,10 @@ static volatile int wakeup_alarm_irq_num;
 
 void furi_hal_power_reset(void) {
     watchdog_reboot(0, 0, 10);
+}
+
+void furi_hal_power_enter_bootsel(void) {
+    reset_usb_boot(0, 0);
 }
 
 uint16_t furi_hal_power_insomnia_level(void) {

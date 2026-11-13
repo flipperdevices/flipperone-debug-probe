@@ -16,6 +16,7 @@ static void cli_commands_init(CliRegistry* registry) {
     cli_registry_add_command(registry, "free_blocks", CliCommandFlagParallelSafe, cli_command_free_blocks, NULL);
     cli_registry_add_command(registry, "clock_out", CliCommandFlagParallelSafe, cli_command_clock_out, NULL);
     cli_registry_add_command(registry, "gpio", CliCommandFlagParallelSafe, cli_command_gpio, NULL);
+    cli_registry_add_command(registry, "power", CliCommandFlagParallelSafe, cli_command_power, NULL);
     if(!furi_hal_otp_usb_white_label_valid()) {
         cli_registry_add_command(registry, "otp", CliCommandFlagParallelSafe, cli_command_otp, NULL);
     }

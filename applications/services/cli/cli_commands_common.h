@@ -3,6 +3,7 @@
 #include <containers/pipe.h>
 
 void cli_command_uptime(PipeSide* pipe, FuriString* args, void* context);
+void cli_command_power(PipeSide* pipe, FuriString* args, void* context);
 void cli_command_log(PipeSide* pipe, FuriString* args, void* context);
 void cli_command_top(PipeSide* pipe, FuriString* args, void* context);
 void cli_command_free(PipeSide* pipe, FuriString* args, void* context);
