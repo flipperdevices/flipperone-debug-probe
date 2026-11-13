@@ -32,7 +32,10 @@
 // Todo: replace with your own VID
 #define USB_VID 0x37c1
 #define USB_PID 0xF131
-#define USB_BCD 0x0100
+// bcdDevice carries the firmware version (vX.Y.Z -> 0xXXYZ), set by CMake from the git tag
+#ifndef USB_BCD_DEVICE
+#define USB_BCD_DEVICE 0x0100
+#endif
 
 //--------------------------------------------------------------------+
 // Device Descriptors
@@ -45,14 +48,15 @@ tusb_desc_device_t const desc_device = {
 #else
     .bcdUSB = 0x0110,
 #endif
-    .bDeviceClass = 0x00, // Each interface specifies its own
-    .bDeviceSubClass = 0x00, // Each interface specifies its own
-    .bDeviceProtocol = 0x00,
+    // Composite device with Interface Association Descriptors (one per CDC)
+    .bDeviceClass = TUSB_CLASS_MISC,
+    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
 
     .idVendor = USB_VID, // Flipper Devices Ltd
     .idProduct = USB_PID, // CMSIS-DAP Debug Probe
-    .bcdDevice = USB_BCD, // Version 01.00
+    .bcdDevice = USB_BCD_DEVICE, // Firmware version
     .iManufacturer = 0x01,
     .iProduct = 0x02,
     .iSerialNumber = 0x03,
@@ -103,8 +107,8 @@ enum {
 #define CDC2_DATA_IN_EP_NUM      0x8B
 #if (CFG_TUD_CDC >= 4)
 #define CDC3_NOTIFICATION_EP_NUM 0x8C
-#define CDC3_DATA_OUT_EP_NUM     0x0C
-#define CDC3_DATA_IN_EP_NUM      0x8D
+#define CDC3_DATA_OUT_EP_NUM     0x0D
+#define CDC3_DATA_IN_EP_NUM      0x8E
 #endif
 #endif
 #endif
@@ -114,6 +118,24 @@ enum {
 #else
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN * CFG_TUD_CDC + TUD_VENDOR_DESC_LEN)
 #endif
+
+// String descriptor indexes, keep in sync with usbd_desc_str
+enum {
+    STRID_LANGID = 0,
+    STRID_MANUFACTURER,
+    STRID_PRODUCT,
+    STRID_SERIAL,
+    STRID_DAP_V1,
+    STRID_DAP_V2,
+    STRID_CDC0,
+    STRID_CDC1,
+    STRID_CDC2,
+    STRID_CDC3,
+};
+
+// Offset of bmCapabilities inside TUD_CDC_DESCRIPTOR:
+// IAD (8) + interface (9) + header (5) + call management (5) + ACM (4), last byte
+#define CDC_DESC_ACM_CAPABILITIES_OFFSET (8 + 9 + 5 + 5 + 4 - 1)
 
 static uint8_t const desc_hid_report[] = {TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE)};
 
@@ -136,13 +158,13 @@ uint8_t desc_configuration[] = {
     TUD_VENDOR_DESCRIPTOR(ITF_NUM_PROBE, 0, DAP_OUT_EP_NUM, DAP_IN_EP_NUM, 64),
 #endif
     // Interface 1 + 2
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC0_COM, 6, CDC0_NOTIFICATION_EP_NUM, 64, CDC0_DATA_OUT_EP_NUM, CDC0_DATA_IN_EP_NUM, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC0_COM, STRID_CDC0, CDC0_NOTIFICATION_EP_NUM, 64, CDC0_DATA_OUT_EP_NUM, CDC0_DATA_IN_EP_NUM, 64),
 #if (CFG_TUD_CDC >= 2)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC1_COM, 6, CDC1_NOTIFICATION_EP_NUM, 64, CDC1_DATA_OUT_EP_NUM, CDC1_DATA_IN_EP_NUM, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC1_COM, STRID_CDC1, CDC1_NOTIFICATION_EP_NUM, 64, CDC1_DATA_OUT_EP_NUM, CDC1_DATA_IN_EP_NUM, 64),
 #if (CFG_TUD_CDC >= 3)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC2_COM, 6, CDC2_NOTIFICATION_EP_NUM, 64, CDC2_DATA_OUT_EP_NUM, CDC2_DATA_IN_EP_NUM, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC2_COM, STRID_CDC2, CDC2_NOTIFICATION_EP_NUM, 64, CDC2_DATA_OUT_EP_NUM, CDC2_DATA_IN_EP_NUM, 64),
 #if (CFG_TUD_CDC >= 4)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC3_COM, 6, CDC3_NOTIFICATION_EP_NUM, 64, CDC3_DATA_OUT_EP_NUM, CDC3_DATA_IN_EP_NUM, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC3_COM, STRID_CDC3, CDC3_NOTIFICATION_EP_NUM, 64, CDC3_DATA_OUT_EP_NUM, CDC3_DATA_IN_EP_NUM, 64),
 #endif
 #endif
 #endif
@@ -154,8 +176,11 @@ uint8_t desc_configuration[] = {
 // Descriptor contents must exist long enough for transfer to complete
 uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
     (void)index; // for multiple configurations
-    /* Hack in CAP_BREAK support */
-    desc_configuration[CONFIG_TOTAL_LEN - TUD_CDC_DESC_LEN + 8 + 9 + 5 + 5 + 4 - 1] = 0x6;
+    /* Hack in CAP_BREAK support: the CDC descriptors are the last CFG_TUD_CDC blocks */
+    for(size_t i = 0; i < CFG_TUD_CDC; i++) {
+        size_t cdc_desc_offset = CONFIG_TOTAL_LEN - TUD_CDC_DESC_LEN * (CFG_TUD_CDC - i);
+        desc_configuration[cdc_desc_offset + CDC_DESC_ACM_CAPABILITIES_OFFSET] = 0x6;
+    }
     return desc_configuration;
 }
 
@@ -175,7 +200,10 @@ char const* usbd_desc_str[] = {
     "flip_one_debug", // 3: Serials will use unique ID if possible
     "CMSIS-DAP v1 Interface", // 4: Interface descriptor for HID transport
     "CMSIS-DAP v2 Interface", // 5: Interface descriptor for Bulk transport
-    "CDC-ACM UART Interface", // 6: Interface descrip`tor for CDC
+    "Linux console", // 6: CDC0, UART0
+    "MCU console", // 7: CDC1, UART1
+    "MCU log", // 8: CDC2, PIO debug RX
+    "Probe console", // 9: CDC3, CLI
 };
 
 const uint16_t* tud_descriptor_string_cb(uint8_t index, __unused uint16_t langid) {

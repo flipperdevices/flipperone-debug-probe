@@ -77,6 +77,19 @@ add_executable(${PROJECT_NAME}
 
 include(lib/corelibs/lib/version/CMakeLists.txt)
 
+# USB bcdDevice from the git tag: vX.Y.Z -> 0xXXYZ (BCD); 0x0100 when the tag does not fit
+set(USB_BCD_DEVICE 0x0100)
+if(GIT_VERSION MATCHES "^v?([0-9][0-9]?)\\.([0-9])\\.([0-9])$")
+    math(EXPR USB_BCD_DEVICE
+        "((${CMAKE_MATCH_1} / 10) << 12) | ((${CMAKE_MATCH_1} % 10) << 8) | (${CMAKE_MATCH_2} << 4) | ${CMAKE_MATCH_3}"
+        OUTPUT_FORMAT HEXADECIMAL)
+else()
+    message(WARNING "Version '${GIT_VERSION}' does not fit USB bcdDevice, using ${USB_BCD_DEVICE}")
+endif()
+message(STATUS "USB bcdDevice: ${USB_BCD_DEVICE} (${GIT_VERSION})")
+set_source_files_properties(${CMAKE_CURRENT_LIST_DIR}/lib/tusb/usb_descriptors.c PROPERTIES
+    COMPILE_DEFINITIONS "USB_BCD_DEVICE=${USB_BCD_DEVICE}")
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     PICO_DEFAULT_UART_TX_PIN=0
     PICO_DEFAULT_UART_RX_PIN=1
