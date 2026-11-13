@@ -4,11 +4,13 @@
 #include <cli/cli_commands.h>
 #include <applications.h>
 
+#include "cli_command_device_info.h"
 #include "cli_command_gpio.h"
 #include "cli_commands_common.h"
 #include "cli_vcp.h"
 
 static void cli_commands_init(CliRegistry* registry) {
+    cli_registry_add_command(registry, "device_info", CliCommandFlagParallelSafe, cli_command_device_info, NULL);
     cli_registry_add_command(registry, "uptime", CliCommandFlagParallelSafe, cli_command_uptime, NULL);
     cli_registry_add_command(registry, "log", CliCommandFlagParallelSafe, cli_command_log, NULL);
     cli_registry_add_command(registry, "top", CliCommandFlagParallelSafe, cli_command_top, NULL);
