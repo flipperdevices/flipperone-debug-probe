@@ -192,12 +192,34 @@ uint8_t const* tud_descriptor_configuration_cb(uint8_t index) {
 static char usbd_product_str[] = PRODUCT_NAME " 00112233445566778899";
 static char* usbd_product_sn_pointer = usbd_product_str + sizeof(PRODUCT_NAME);
 
+// Serial number: a fixed prefix and 16 bits folded from the unique board ID, so
+// that several probes on one host can be told apart (OpenOCD 'adapter serial',
+// /dev/serial/by-id) while port names stay short and readable. The trailing '_'
+// separates it from the interface number macOS appends: usbmodemf1_debug_d950_2
+#define SERIAL_PREFIX "f1_debug_"
+static char usbd_serial_str[] = SERIAL_PREFIX "0000_";
+
+static void usbd_serial_init(void) {
+    static const char hex[] = "0123456789abcdef";
+    pico_unique_board_id_t board_id;
+    pico_get_unique_board_id(&board_id);
+    uint8_t folded[2] = {0, 0};
+    for(size_t i = 0; i < sizeof(board_id.id); i++) {
+        folded[i % 2] ^= board_id.id[i];
+    }
+    char* out = usbd_serial_str + sizeof(SERIAL_PREFIX) - 1;
+    for(size_t i = 0; i < sizeof(folded); i++) {
+        *out++ = hex[folded[i] >> 4];
+        *out++ = hex[folded[i] & 0x0F];
+    }
+}
+
 // array of pointer to string descriptors
 char const* usbd_desc_str[] = {
     (const char[]){0x09, 0x04}, // 0: is supported language is English (0x0409)
     "Flipper FZCO", // 1: Manufacturer
     usbd_product_str, // 2: Product
-    "flip_one_debug", // 3: Serials will use unique ID if possible
+    usbd_serial_str, // 3: Serial, see usbd_serial_init()
     "CMSIS-DAP v1 Interface", // 4: Interface descriptor for HID transport
     "CMSIS-DAP v2 Interface", // 5: Interface descriptor for Bulk transport
     "Linux console", // 6: CDC0, UART0
@@ -219,6 +241,7 @@ const uint16_t* tud_descriptor_string_cb(uint8_t index, __unused uint16_t langid
     // Assign the SN using the unique flash id
     if(usbd_product_str[sizeof(PRODUCT_NAME)] == '0') {
         pico_get_unique_board_id_string(usbd_product_sn_pointer, sizeof(usbd_product_str) - sizeof(PRODUCT_NAME) - 1);
+        usbd_serial_init();
     }
 
     uint8_t len;

@@ -68,10 +68,12 @@ Example device paths on macOS:
 
 | Port | Device path | Description | Baud rate |
 | ---- | ----------- | ----------- | --------- |
-| Port 1 | `/dev/tty.usbmodemflip_one_debug2` | RK3576 CPU console | `1500000` |
-| Port 2 | `/dev/tty.usbmodemflip_one_debug4` | Flipper One MCU CLI | `1500000` |
-| Port 3 | `/dev/tty.usbmodemflip_one_debug6` | MCU debug logs | `1500000` |
-| Port 4 | `/dev/tty.usbmodemflip_one_debug8` | Debug Probe MCU CLI | `1500000` |
+| Port 1 | `/dev/tty.usbmodemf1_debug_xxxx_2` | RK3576 CPU console | `1500000` |
+| Port 2 | `/dev/tty.usbmodemf1_debug_xxxx_4` | Flipper One MCU CLI | `1500000` |
+| Port 3 | `/dev/tty.usbmodemf1_debug_xxxx_6` | MCU debug logs | `1500000` |
+| Port 4 | `/dev/tty.usbmodemf1_debug_xxxx_8` | Debug Probe MCU CLI | `1500000` |
+
+`xxxx` is four hex digits derived from the probe's unique chip ID, so several probes on one computer get distinct port names. The same string, `f1_debug_xxxx_`, is the USB serial number: use it to select a probe in OpenOCD with `adapter serial f1_debug_xxxx_`.
 
 Each port prints a welcome message when you connect, so you can confirm which port you are on.  
 The baud rate is fixed at `1500000` for all ports, regardless of what you set when connecting.
@@ -84,9 +86,9 @@ We recommend using [`tio`](https://github.com/tio/tio), because it is lightweigh
 
 ### Basic connection
 
-`tio -b 1500000 /dev/tty.usbmodemflip_one_debug2`
+`tio -b 1500000 /dev/tty.usbmodemf1_debug_xxxx_2`
 
 ### Connection with timestamps
 Use timestamps to see delays between boot log lines and identify where the boot process slows down:  
 
-`tio --timestamp --timestamp-format 24hour-delta -b 1500000 /dev/tty.usbmodemflip_one_debug2`
+`tio --timestamp --timestamp-format 24hour-delta -b 1500000 /dev/tty.usbmodemf1_debug_xxxx_2`
